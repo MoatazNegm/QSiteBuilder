@@ -1,0 +1,25 @@
+QuickStor Product Features - Marketing Brief
+=============================================
+
+Hey team, here's the list of features we need to highlight on the new landing page. Feel free to reword these for impact:
+
+1. SELF-HEALING DATA INTEGRITY
+Our ZFS implementation checksums every single block of data. If any corruption occurs (bit rot, cosmic rays, whatever), the system automatically repairs it using parity data. Users never even know it happened. This is HUGE for archival and compliance use cases.
+
+2. ZERO VENDOR LOCK-IN
+Unlike competitors who require proprietary RAID cards and special drives, QuickStor runs on standard hardware. If something fails, you can literally pull the drives and plug them into any machine with ZFS. Your data is always accessible. No ransom, no special tools needed.
+
+3. BLAZING FAST HYBRID STORAGE
+Our intelligent tiering automatically moves frequently accessed "hot" data to NVMe SSDs while keeping "cold" archival data on cost-effective HDDs. You get flash-like performance at HDD prices. The system learns access patterns and optimizes in real-time.
+
+4. NATIVE ENCRYPTION
+AES-256-GCM encryption at the dataset level. Encrypted at rest, no performance penalty with modern CPUs. Keys never stored on disk. Perfect for HIPAA, GDPR, and financial compliance.
+
+5. INSTANT SNAPSHOTS
+Take thousands of point-in-time snapshots with zero performance impact. Restore individual files or entire volumes in seconds. Great for ransomware recovery and development/testing workflows.
+
+6. BUILT-IN REPLICATION
+Async or sync replication to remote sites over any network. Efficient block-level deduplication means you only send changed data. Perfect for DR and multi-site deployments.
+
+Let me know if you need more details on any of these!
+- Marketing Team

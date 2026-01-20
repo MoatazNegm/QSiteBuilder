@@ -1,0 +1,723 @@
+{
+  "sites/quickstor-staging": {
+    "version": "1768916872415-2302",
+    "navbar": {
+      "logo": "/@fs/C:/Users/Moata/OneDrive/Documents/QuickStor/quickstor-frontend/src/assets/Quickstor%20logo.png",
+      "links": [
+        {
+          "label": "PERFORMANCE",
+          "href": "#performance"
+        },
+        {
+          "label": "ZFS TECHNOLOGY",
+          "href": "#zfs"
+        },
+        {
+          "label": "SOLUTIONS",
+          "href": "#solutions"
+        },
+        {
+          "label": "SUPPORT",
+          "href": "#support"
+        }
+      ],
+      "ctaText": "BUILD SERVER"
+    },
+    "footer": {
+      "brandName": "QUICKSTOR",
+      "brandDescription": "High-performance ZFS storage appliances for enterprise, media production, and big data.",
+      "tagline": "Engineered in Giza. Deployed Globally.",
+      "columns": [
+        {
+          "title": "Hardware",
+          "links": [
+            "Z-Series (Performance)",
+            "C-Series (Capacity)",
+            "All-Flash NVMe",
+            "JBOD Expansion"
+          ]
+        },
+        {
+          "title": "Resources",
+          "links": [
+            "ZFS Whitepaper",
+            "Benchmark Results",
+            "Documentation",
+            "Support Portal"
+          ]
+        },
+        {
+          "title": "Contact",
+          "links": [
+            "Sales Online",
+            "sales@quickstor.net",
+            "+20 100 000 0000"
+          ]
+        }
+      ],
+      "copyright": "© 2024 QuickStor Systems. All rights reserved.",
+      "legalLinks": [
+        "Privacy",
+        "Terms",
+        "SLA"
+      ]
+    },
+    "pages": [
+      {
+        "id": "home",
+        "slug": "/",
+        "title": "Home",
+        "sections": [
+          {
+            "id": "hero-main",
+            "type": "HERO",
+            "content": {
+              "badge": "V 2.0 // ENTERPRISE READY",
+              "title": {
+                "line1": "DATA AT THE",
+                "highlight": "SPEED OF LIGHT."
+              },
+              "subtitle": "Stop waiting for legacy NAS. QuickStor deploys enterprise-grade ZFS mirroring and RAID-Z3 on bare-metal hardware.",
+              "primaryCta": "VIEW CONFIGURATIONS",
+              "secondaryCta": "WHY ZFS?",
+              "trustIndicators": [
+                {
+                  "icon": "ShieldCheck",
+                  "text": "99.999% UPTIME"
+                },
+                {
+                  "icon": "Lock",
+                  "text": "AES-256 ENCRYPTED"
+                }
+              ],
+              "serverStatus": {
+                "status": "ONLINE",
+                "scrub": "SCRUB_COMPLETED",
+                "dedup": "1.45x"
+              }
+            }
+          },
+          {
+            "id": "comparison-graph-1",
+            "type": "COMPARISON_GRAPH",
+            "content": {
+              "title": "DOMINATE THE BENCHMARKS",
+              "description": "We don't just sell storage; we sell IOPS. By optimizing the ZFS Adaptive Replacement Cache (ARC) and leveraging NVMe L2ARC, QuickStor servers saturate 100GbE links while competitors struggle to fill 10GbE.",
+              "data": [
+                {
+                  "name": "Competitor Q",
+                  "iops": 45000,
+                  "throughput": 2200
+                },
+                {
+                  "name": "Competitor S",
+                  "iops": 42000,
+                  "throughput": 2100
+                },
+                {
+                  "name": "QuickStor Z-Series",
+                  "iops": 125000,
+                  "throughput": 6500
+                }
+              ]
+            }
+          },
+          {
+            "id": "features-main",
+            "type": "FEATURE_GRID",
+            "content": {
+              "features": [
+                {
+                  "icon": "ShieldCheck",
+                  "title": "Self-Healing Data",
+                  "description": "Every block is checksummed. If ZFS detects silent data corruption (\"bit rot\"), it automatically repairs the damaged data from parity before you even know it happened."
+                },
+                {
+                  "icon": "Cpu",
+                  "title": "Open Hardware",
+                  "description": "No proprietary RAID cards. No vendor lock-in. If a controller fails, plug your drives into any standard HBA and your data is accessible instantly."
+                },
+                {
+                  "icon": "Activity",
+                  "title": "Intelligent Tiering",
+                  "description": "Hybrid Storage Pools automatically route hot data to NVMe/SSD and cold data to high-capacity HDDs, giving you flash speed at spinning-disk prices."
+                }
+              ]
+            }
+          },
+          {
+            "id": "custom_html-1768916719818",
+            "type": "CUSTOM_HTML",
+            "content": {
+              "html": "<section class=\"bg-[#050505] py-20 md:py-32 px-4 sm:px-6 lg:px-12\">\n  <div class=\"max-w-7xl mx-auto\">\n    <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start\">\n      <!-- Left Column: Text Content -->\n      <div class=\"space-y-8\">\n        <!-- Badge -->\n        <div class=\"inline-flex items-center gap-2 px-3 py-1 border border-blue-500/30 bg-blue-900/10 rounded-full text-blue-400 text-xs font-mono uppercase tracking-widest\">\n          {{badgeText}}\n        </div>\n        <!-- Title -->\n        <h1 class=\"text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white\">\n          {{title}}\n        </h1>\n        <!-- Detail Lines -->\n        <p class=\"text-xl md:text-2xl font-semibold text-white\">{{detailLine1}}</p>\n        <p class=\"text-base md:text-lg text-gray-400 leading-relaxed max-w-2xl\">{{detailLine2}}</p>\n        <!-- CTA Button -->\n        <div class=\"pt-4\">\n          <button class=\"bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-sm transition-all\">\n            {{buttonText}}\n          </button>\n        </div>\n      </div>\n      <!-- Right Column: Image and More Detail -->\n      <div class=\"space-y-8\">\n        <!-- Image Container -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all\">\n          <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"w-full h-64 md:h-80 lg:h-96 object-cover\">\n        </div>\n        <!-- More Detail Below Image -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 hover:border-blue-500 transition-all\">\n          <h3 class=\"text-lg font-semibold text-white mb-3\">{{moreDetailTitle}}</h3>\n          <p class=\"text-gray-400 leading-relaxed\">{{moreDetailDescription}}</p>\n        </div>\n      </div>\n    </div>\n  </div>\n</section>",
+              "name": "an Eifel box",
+              "schema": [
+                {
+                  "key": "badgeText",
+                  "label": "Badge Text",
+                  "type": "text",
+                  "description": "Text for the blue badge above the main title"
+                },
+                {
+                  "key": "title",
+                  "label": "Main Title",
+                  "type": "text",
+                  "description": "Large heading text on the left side"
+                },
+                {
+                  "key": "detailLine1",
+                  "label": "Detail Line 1",
+                  "type": "text",
+                  "description": "First prominent detail line (semibold, white)"
+                },
+                {
+                  "key": "detailLine2",
+                  "label": "Detail Line 2",
+                  "type": "textarea",
+                  "description": "Second descriptive detail line (gray, longer text)"
+                },
+                {
+                  "key": "buttonText",
+                  "label": "Button Text",
+                  "type": "text",
+                  "description": "Text for the primary call-to-action button"
+                },
+                {
+                  "key": "imageUrl",
+                  "label": "Image URL",
+                  "type": "text",
+                  "description": "URL of the image (e.g., Eiffel Tower) on the right"
+                },
+                {
+                  "key": "imageAlt",
+                  "label": "Image Alt Text",
+                  "type": "text",
+                  "description": "Accessible description of the image"
+                },
+                {
+                  "key": "moreDetailTitle",
+                  "label": "More Detail Title",
+                  "type": "text",
+                  "description": "Title for the card below the image"
+                },
+                {
+                  "key": "moreDetailDescription",
+                  "label": "More Detail Description",
+                  "type": "textarea",
+                  "description": "Detailed text inside the card below the image"
+                }
+              ],
+              "content": {
+                "badgeText": "NEW ARCHITECTURE",
+                "title": "Storage Tower",
+                "detailLine1": "Engineered for unparalleled data integrity and performance.",
+                "detailLine2": "Our ZFS-based appliance combines enterprise-grade hardware with open-source innovation to deliver a storage solution that scales effortlessly with your data needs.",
+                "buttonText": "Explore Specifications",
+                "imageUrl": "https://m.media-amazon.com/images/I/617d2DVcCqL._AC_SY300_SX300_QL70_ML2_.jpg",
+                "imageAlt": "Eiffel Tower representing new architectural excellence",
+                "moreDetailTitle": "Built on Solid Foundations",
+                "moreDetailDescription": "It is life"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "theme": {
+      "id": "default",
+      "name": "QuickStor Dark",
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#3b82f6",
+        "background": "#050505",
+        "surface": "#0a0a0a",
+        "surfaceAlt": "#151515",
+        "text": "#ffffff",
+        "textMuted": "#9ca3af",
+        "border": "#1f2937",
+        "success": "#22c55e",
+        "warning": "#eab308",
+        "error": "#ef4444"
+      },
+      "fonts": {
+        "heading": "Inter, system-ui, sans-serif",
+        "body": "system-ui, -apple-system, sans-serif"
+      },
+      "hero": {
+        "backgroundType": "gradient",
+        "backgroundValue": "linear-gradient(135deg, #050505 0%, #0a1628 100%)",
+        "overlayOpacity": 0.5,
+        "glowColor": "#2563eb",
+        "glowOpacity": 0.2
+      }
+    },
+    "savedThemes": [
+      {
+        "id": "default",
+        "name": "QuickStor Dark",
+        "colors": {
+          "primary": "#2563eb",
+          "secondary": "#3b82f6",
+          "background": "#050505",
+          "surface": "#0a0a0a",
+          "surfaceAlt": "#151515",
+          "text": "#ffffff",
+          "textMuted": "#9ca3af",
+          "border": "#1f2937",
+          "success": "#22c55e",
+          "warning": "#eab308",
+          "error": "#ef4444"
+        },
+        "fonts": {
+          "heading": "Inter, system-ui, sans-serif",
+          "body": "system-ui, -apple-system, sans-serif"
+        },
+        "hero": {
+          "backgroundType": "gradient",
+          "backgroundValue": "linear-gradient(135deg, #050505 0%, #0a1628 100%)",
+          "overlayOpacity": 0.5,
+          "glowColor": "#2563eb",
+          "glowOpacity": 0.2
+        }
+      }
+    ],
+    "customSections": [
+      {
+        "id": "custom-1768916704909",
+        "name": "an Eifel box",
+        "html": "<section class=\"bg-[#050505] py-20 md:py-32 px-4 sm:px-6 lg:px-12\">\n  <div class=\"max-w-7xl mx-auto\">\n    <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start\">\n      <!-- Left Column: Text Content -->\n      <div class=\"space-y-8\">\n        <!-- Badge -->\n        <div class=\"inline-flex items-center gap-2 px-3 py-1 border border-blue-500/30 bg-blue-900/10 rounded-full text-blue-400 text-xs font-mono uppercase tracking-widest\">\n          {{badgeText}}\n        </div>\n        <!-- Title -->\n        <h1 class=\"text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white\">\n          {{title}}\n        </h1>\n        <!-- Detail Lines -->\n        <p class=\"text-xl md:text-2xl font-semibold text-white\">{{detailLine1}}</p>\n        <p class=\"text-base md:text-lg text-gray-400 leading-relaxed max-w-2xl\">{{detailLine2}}</p>\n        <!-- CTA Button -->\n        <div class=\"pt-4\">\n          <button class=\"bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-sm transition-all\">\n            {{buttonText}}\n          </button>\n        </div>\n      </div>\n      <!-- Right Column: Image and More Detail -->\n      <div class=\"space-y-8\">\n        <!-- Image Container -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all\">\n          <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"w-full h-64 md:h-80 lg:h-96 object-cover\">\n        </div>\n        <!-- More Detail Below Image -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 hover:border-blue-500 transition-all\">\n          <h3 class=\"text-lg font-semibold text-white mb-3\">{{moreDetailTitle}}</h3>\n          <p class=\"text-gray-400 leading-relaxed\">{{moreDetailDescription}}</p>\n        </div>\n      </div>\n    </div>\n  </div>\n</section>",
+        "schema": [
+          {
+            "key": "badgeText",
+            "label": "Badge Text",
+            "type": "text",
+            "description": "Text for the blue badge above the main title"
+          },
+          {
+            "key": "title",
+            "label": "Main Title",
+            "type": "text",
+            "description": "Large heading text on the left side"
+          },
+          {
+            "key": "detailLine1",
+            "label": "Detail Line 1",
+            "type": "text",
+            "description": "First prominent detail line (semibold, white)"
+          },
+          {
+            "key": "detailLine2",
+            "label": "Detail Line 2",
+            "type": "textarea",
+            "description": "Second descriptive detail line (gray, longer text)"
+          },
+          {
+            "key": "buttonText",
+            "label": "Button Text",
+            "type": "text",
+            "description": "Text for the primary call-to-action button"
+          },
+          {
+            "key": "imageUrl",
+            "label": "Image URL",
+            "type": "text",
+            "description": "URL of the image (e.g., Eiffel Tower) on the right"
+          },
+          {
+            "key": "imageAlt",
+            "label": "Image Alt Text",
+            "type": "text",
+            "description": "Accessible description of the image"
+          },
+          {
+            "key": "moreDetailTitle",
+            "label": "More Detail Title",
+            "type": "text",
+            "description": "Title for the card below the image"
+          },
+          {
+            "key": "moreDetailDescription",
+            "label": "More Detail Description",
+            "type": "textarea",
+            "description": "Detailed text inside the card below the image"
+          }
+        ],
+        "defaultContent": {
+          "badgeText": "NEW ARCHITECTURE",
+          "title": "Introducing the Next-Gen Storage Tower",
+          "detailLine1": "Engineered for unparalleled data integrity and performance.",
+          "detailLine2": "Our ZFS-based appliance combines enterprise-grade hardware with open-source innovation to deliver a storage solution that scales effortlessly with your data needs.",
+          "buttonText": "Explore Specifications",
+          "imageUrl": "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+          "imageAlt": "Eiffel Tower representing new architectural excellence",
+          "moreDetailTitle": "Built on Solid Foundations",
+          "moreDetailDescription": "Like the iconic tower, our storage systems are designed with precision and redundancy. Every component is optimized for maximum uptime and data protection, ensuring your infrastructure remains resilient under any load."
+        },
+        "prompt": "Make a new box with New a Eifel tower in the right and below it more detail while in the left a title and tow lines of details",
+        "createdAt": "2026-01-20T13:45:04.909Z"
+      }
+    ],
+    "lastUpdated": "2026-01-20T13:47:52.415Z"
+  },
+  "sites/quickstor-live": {
+    "version": "1768916872415-2302",
+    "navbar": {
+      "logo": "/@fs/C:/Users/Moata/OneDrive/Documents/QuickStor/quickstor-frontend/src/assets/Quickstor%20logo.png",
+      "links": [
+        {
+          "label": "PERFORMANCE",
+          "href": "#performance"
+        },
+        {
+          "label": "ZFS TECHNOLOGY",
+          "href": "#zfs"
+        },
+        {
+          "label": "SOLUTIONS",
+          "href": "#solutions"
+        },
+        {
+          "label": "SUPPORT",
+          "href": "#support"
+        }
+      ],
+      "ctaText": "BUILD SERVER"
+    },
+    "footer": {
+      "brandName": "QUICKSTOR",
+      "brandDescription": "High-performance ZFS storage appliances for enterprise, media production, and big data.",
+      "tagline": "Engineered in Giza. Deployed Globally.",
+      "columns": [
+        {
+          "title": "Hardware",
+          "links": [
+            "Z-Series (Performance)",
+            "C-Series (Capacity)",
+            "All-Flash NVMe",
+            "JBOD Expansion"
+          ]
+        },
+        {
+          "title": "Resources",
+          "links": [
+            "ZFS Whitepaper",
+            "Benchmark Results",
+            "Documentation",
+            "Support Portal"
+          ]
+        },
+        {
+          "title": "Contact",
+          "links": [
+            "Sales Online",
+            "sales@quickstor.net",
+            "+20 100 000 0000"
+          ]
+        }
+      ],
+      "copyright": "© 2024 QuickStor Systems. All rights reserved.",
+      "legalLinks": [
+        "Privacy",
+        "Terms",
+        "SLA"
+      ]
+    },
+    "pages": [
+      {
+        "id": "home",
+        "slug": "/",
+        "title": "Home",
+        "sections": [
+          {
+            "id": "hero-main",
+            "type": "HERO",
+            "content": {
+              "badge": "V 2.0 // ENTERPRISE READY",
+              "title": {
+                "line1": "DATA AT THE",
+                "highlight": "SPEED OF LIGHT."
+              },
+              "subtitle": "Stop waiting for legacy NAS. QuickStor deploys enterprise-grade ZFS mirroring and RAID-Z3 on bare-metal hardware.",
+              "primaryCta": "VIEW CONFIGURATIONS",
+              "secondaryCta": "WHY ZFS?",
+              "trustIndicators": [
+                {
+                  "icon": "ShieldCheck",
+                  "text": "99.999% UPTIME"
+                },
+                {
+                  "icon": "Lock",
+                  "text": "AES-256 ENCRYPTED"
+                }
+              ],
+              "serverStatus": {
+                "status": "ONLINE",
+                "scrub": "SCRUB_COMPLETED",
+                "dedup": "1.45x"
+              }
+            }
+          },
+          {
+            "id": "comparison-graph-1",
+            "type": "COMPARISON_GRAPH",
+            "content": {
+              "title": "DOMINATE THE BENCHMARKS",
+              "description": "We don't just sell storage; we sell IOPS. By optimizing the ZFS Adaptive Replacement Cache (ARC) and leveraging NVMe L2ARC, QuickStor servers saturate 100GbE links while competitors struggle to fill 10GbE.",
+              "data": [
+                {
+                  "name": "Competitor Q",
+                  "iops": 45000,
+                  "throughput": 2200
+                },
+                {
+                  "name": "Competitor S",
+                  "iops": 42000,
+                  "throughput": 2100
+                },
+                {
+                  "name": "QuickStor Z-Series",
+                  "iops": 125000,
+                  "throughput": 6500
+                }
+              ]
+            }
+          },
+          {
+            "id": "features-main",
+            "type": "FEATURE_GRID",
+            "content": {
+              "features": [
+                {
+                  "icon": "ShieldCheck",
+                  "title": "Self-Healing Data",
+                  "description": "Every block is checksummed. If ZFS detects silent data corruption (\"bit rot\"), it automatically repairs the damaged data from parity before you even know it happened."
+                },
+                {
+                  "icon": "Cpu",
+                  "title": "Open Hardware",
+                  "description": "No proprietary RAID cards. No vendor lock-in. If a controller fails, plug your drives into any standard HBA and your data is accessible instantly."
+                },
+                {
+                  "icon": "Activity",
+                  "title": "Intelligent Tiering",
+                  "description": "Hybrid Storage Pools automatically route hot data to NVMe/SSD and cold data to high-capacity HDDs, giving you flash speed at spinning-disk prices."
+                }
+              ]
+            }
+          },
+          {
+            "id": "custom_html-1768916719818",
+            "type": "CUSTOM_HTML",
+            "content": {
+              "html": "<section class=\"bg-[#050505] py-20 md:py-32 px-4 sm:px-6 lg:px-12\">\n  <div class=\"max-w-7xl mx-auto\">\n    <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start\">\n      <!-- Left Column: Text Content -->\n      <div class=\"space-y-8\">\n        <!-- Badge -->\n        <div class=\"inline-flex items-center gap-2 px-3 py-1 border border-blue-500/30 bg-blue-900/10 rounded-full text-blue-400 text-xs font-mono uppercase tracking-widest\">\n          {{badgeText}}\n        </div>\n        <!-- Title -->\n        <h1 class=\"text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white\">\n          {{title}}\n        </h1>\n        <!-- Detail Lines -->\n        <p class=\"text-xl md:text-2xl font-semibold text-white\">{{detailLine1}}</p>\n        <p class=\"text-base md:text-lg text-gray-400 leading-relaxed max-w-2xl\">{{detailLine2}}</p>\n        <!-- CTA Button -->\n        <div class=\"pt-4\">\n          <button class=\"bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-sm transition-all\">\n            {{buttonText}}\n          </button>\n        </div>\n      </div>\n      <!-- Right Column: Image and More Detail -->\n      <div class=\"space-y-8\">\n        <!-- Image Container -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all\">\n          <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"w-full h-64 md:h-80 lg:h-96 object-cover\">\n        </div>\n        <!-- More Detail Below Image -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 hover:border-blue-500 transition-all\">\n          <h3 class=\"text-lg font-semibold text-white mb-3\">{{moreDetailTitle}}</h3>\n          <p class=\"text-gray-400 leading-relaxed\">{{moreDetailDescription}}</p>\n        </div>\n      </div>\n    </div>\n  </div>\n</section>",
+              "name": "an Eifel box",
+              "schema": [
+                {
+                  "key": "badgeText",
+                  "label": "Badge Text",
+                  "type": "text",
+                  "description": "Text for the blue badge above the main title"
+                },
+                {
+                  "key": "title",
+                  "label": "Main Title",
+                  "type": "text",
+                  "description": "Large heading text on the left side"
+                },
+                {
+                  "key": "detailLine1",
+                  "label": "Detail Line 1",
+                  "type": "text",
+                  "description": "First prominent detail line (semibold, white)"
+                },
+                {
+                  "key": "detailLine2",
+                  "label": "Detail Line 2",
+                  "type": "textarea",
+                  "description": "Second descriptive detail line (gray, longer text)"
+                },
+                {
+                  "key": "buttonText",
+                  "label": "Button Text",
+                  "type": "text",
+                  "description": "Text for the primary call-to-action button"
+                },
+                {
+                  "key": "imageUrl",
+                  "label": "Image URL",
+                  "type": "text",
+                  "description": "URL of the image (e.g., Eiffel Tower) on the right"
+                },
+                {
+                  "key": "imageAlt",
+                  "label": "Image Alt Text",
+                  "type": "text",
+                  "description": "Accessible description of the image"
+                },
+                {
+                  "key": "moreDetailTitle",
+                  "label": "More Detail Title",
+                  "type": "text",
+                  "description": "Title for the card below the image"
+                },
+                {
+                  "key": "moreDetailDescription",
+                  "label": "More Detail Description",
+                  "type": "textarea",
+                  "description": "Detailed text inside the card below the image"
+                }
+              ],
+              "content": {
+                "badgeText": "NEW ARCHITECTURE",
+                "title": "Storage Tower",
+                "detailLine1": "Engineered for unparalleled data integrity and performance.",
+                "detailLine2": "Our ZFS-based appliance combines enterprise-grade hardware with open-source innovation to deliver a storage solution that scales effortlessly with your data needs.",
+                "buttonText": "Explore Specifications",
+                "imageUrl": "https://m.media-amazon.com/images/I/617d2DVcCqL._AC_SY300_SX300_QL70_ML2_.jpg",
+                "imageAlt": "Eiffel Tower representing new architectural excellence",
+                "moreDetailTitle": "Built on Solid Foundations",
+                "moreDetailDescription": "It is life"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "theme": {
+      "id": "default",
+      "name": "QuickStor Dark",
+      "colors": {
+        "primary": "#2563eb",
+        "secondary": "#3b82f6",
+        "background": "#050505",
+        "surface": "#0a0a0a",
+        "surfaceAlt": "#151515",
+        "text": "#ffffff",
+        "textMuted": "#9ca3af",
+        "border": "#1f2937",
+        "success": "#22c55e",
+        "warning": "#eab308",
+        "error": "#ef4444"
+      },
+      "fonts": {
+        "heading": "Inter, system-ui, sans-serif",
+        "body": "system-ui, -apple-system, sans-serif"
+      },
+      "hero": {
+        "backgroundType": "gradient",
+        "backgroundValue": "linear-gradient(135deg, #050505 0%, #0a1628 100%)",
+        "overlayOpacity": 0.5,
+        "glowColor": "#2563eb",
+        "glowOpacity": 0.2
+      }
+    },
+    "savedThemes": [
+      {
+        "id": "default",
+        "name": "QuickStor Dark",
+        "colors": {
+          "primary": "#2563eb",
+          "secondary": "#3b82f6",
+          "background": "#050505",
+          "surface": "#0a0a0a",
+          "surfaceAlt": "#151515",
+          "text": "#ffffff",
+          "textMuted": "#9ca3af",
+          "border": "#1f2937",
+          "success": "#22c55e",
+          "warning": "#eab308",
+          "error": "#ef4444"
+        },
+        "fonts": {
+          "heading": "Inter, system-ui, sans-serif",
+          "body": "system-ui, -apple-system, sans-serif"
+        },
+        "hero": {
+          "backgroundType": "gradient",
+          "backgroundValue": "linear-gradient(135deg, #050505 0%, #0a1628 100%)",
+          "overlayOpacity": 0.5,
+          "glowColor": "#2563eb",
+          "glowOpacity": 0.2
+        }
+      }
+    ],
+    "customSections": [
+      {
+        "id": "custom-1768916704909",
+        "name": "an Eifel box",
+        "html": "<section class=\"bg-[#050505] py-20 md:py-32 px-4 sm:px-6 lg:px-12\">\n  <div class=\"max-w-7xl mx-auto\">\n    <div class=\"grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-start\">\n      <!-- Left Column: Text Content -->\n      <div class=\"space-y-8\">\n        <!-- Badge -->\n        <div class=\"inline-flex items-center gap-2 px-3 py-1 border border-blue-500/30 bg-blue-900/10 rounded-full text-blue-400 text-xs font-mono uppercase tracking-widest\">\n          {{badgeText}}\n        </div>\n        <!-- Title -->\n        <h1 class=\"text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white\">\n          {{title}}\n        </h1>\n        <!-- Detail Lines -->\n        <p class=\"text-xl md:text-2xl font-semibold text-white\">{{detailLine1}}</p>\n        <p class=\"text-base md:text-lg text-gray-400 leading-relaxed max-w-2xl\">{{detailLine2}}</p>\n        <!-- CTA Button -->\n        <div class=\"pt-4\">\n          <button class=\"bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-8 rounded-sm transition-all\">\n            {{buttonText}}\n          </button>\n        </div>\n      </div>\n      <!-- Right Column: Image and More Detail -->\n      <div class=\"space-y-8\">\n        <!-- Image Container -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl overflow-hidden hover:border-blue-500 transition-all\">\n          <img src=\"{{imageUrl}}\" alt=\"{{imageAlt}}\" class=\"w-full h-64 md:h-80 lg:h-96 object-cover\">\n        </div>\n        <!-- More Detail Below Image -->\n        <div class=\"bg-[#0a0a0a] border border-gray-800 rounded-xl p-6 hover:border-blue-500 transition-all\">\n          <h3 class=\"text-lg font-semibold text-white mb-3\">{{moreDetailTitle}}</h3>\n          <p class=\"text-gray-400 leading-relaxed\">{{moreDetailDescription}}</p>\n        </div>\n      </div>\n    </div>\n  </div>\n</section>",
+        "schema": [
+          {
+            "key": "badgeText",
+            "label": "Badge Text",
+            "type": "text",
+            "description": "Text for the blue badge above the main title"
+          },
+          {
+            "key": "title",
+            "label": "Main Title",
+            "type": "text",
+            "description": "Large heading text on the left side"
+          },
+          {
+            "key": "detailLine1",
+            "label": "Detail Line 1",
+            "type": "text",
+            "description": "First prominent detail line (semibold, white)"
+          },
+          {
+            "key": "detailLine2",
+            "label": "Detail Line 2",
+            "type": "textarea",
+            "description": "Second descriptive detail line (gray, longer text)"
+          },
+          {
+            "key": "buttonText",
+            "label": "Button Text",
+            "type": "text",
+            "description": "Text for the primary call-to-action button"
+          },
+          {
+            "key": "imageUrl",
+            "label": "Image URL",
+            "type": "text",
+            "description": "URL of the image (e.g., Eiffel Tower) on the right"
+          },
+          {
+            "key": "imageAlt",
+            "label": "Image Alt Text",
+            "type": "text",
+            "description": "Accessible description of the image"
+          },
+          {
+            "key": "moreDetailTitle",
+            "label": "More Detail Title",
+            "type": "text",
+            "description": "Title for the card below the image"
+          },
+          {
+            "key": "moreDetailDescription",
+            "label": "More Detail Description",
+            "type": "textarea",
+            "description": "Detailed text inside the card below the image"
+          }
+        ],
+        "defaultContent": {
+          "badgeText": "NEW ARCHITECTURE",
+          "title": "Introducing the Next-Gen Storage Tower",
+          "detailLine1": "Engineered for unparalleled data integrity and performance.",
+          "detailLine2": "Our ZFS-based appliance combines enterprise-grade hardware with open-source innovation to deliver a storage solution that scales effortlessly with your data needs.",
+          "buttonText": "Explore Specifications",
+          "imageUrl": "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+          "imageAlt": "Eiffel Tower representing new architectural excellence",
+          "moreDetailTitle": "Built on Solid Foundations",
+          "moreDetailDescription": "Like the iconic tower, our storage systems are designed with precision and redundancy. Every component is optimized for maximum uptime and data protection, ensuring your infrastructure remains resilient under any load."
+        },
+        "prompt": "Make a new box with New a Eifel tower in the right and below it more detail while in the left a title and tow lines of details",
+        "createdAt": "2026-01-20T13:45:04.909Z"
+      }
+    ],
+    "lastUpdated": "2026-01-20T13:47:52.415Z",
+    "lastPublished": "2026-01-20T14:24:31.656Z"
+  }
+}

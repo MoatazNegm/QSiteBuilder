@@ -1,0 +1,7 @@
+icon,title,description
+ShieldCheck,Self-Healing Data,Every block is checksummed. ZFS automatically repairs corruption using parity.
+Cpu,Open Hardware,No proprietary RAID cards or vendor lock-in. Use standard HBAs.
+Activity,Intelligent Tiering,Hot data on NVMe SSDs - cold data on HDDs. Flash speed at HDD prices.
+Lock,Native Encryption,AES-256-GCM encryption at dataset level with zero performance penalty.
+RefreshCw,Instant Snapshots,Thousands of point-in-time snapshots with zero performance impact.
+Globe,Built-in Replication,Async or sync replication with block-level deduplication.

@@ -1,0 +1,24 @@
+Storage Performance Benchmarks Q4 2024
+=====================================
+
+Our team conducted extensive testing across multiple NAS solutions to determine real-world performance under enterprise workloads. Here are the results:
+
+## Test Results
+
+**QuickStor Z-Series (Our Champion)**
+The Z-Series absolutely dominated with an incredible 125,000 IOPS and sustained throughput of 6,500 MB/s. This was achieved using RAID-Z3 with 12x NVMe drives.
+
+**Synology DS3622xs+**
+Synology's flagship managed 48,000 IOPS with 2,400 MB/s throughput. While decent for small business, it can't compete at enterprise scale.
+
+**QNAP TS-h2490FU**
+QNAP's all-flash unit scored 52,000 IOPS and 2,600 MB/s. Better than Synology but still far behind QuickStor.
+
+**TrueNAS Enterprise**
+The TrueNAS solution achieved 78,000 IOPS with 4,200 MB/s throughput - respectable numbers but still no match for our optimized ZFS implementation.
+
+**Dell PowerStore 500T**
+Dell's entry-level enterprise array managed 95,000 IOPS and 5,100 MB/s. Impressive, but at 3x the price point.
+
+---
+Test Environment: Random 4K read/write, 70/30 mix, queue depth 32

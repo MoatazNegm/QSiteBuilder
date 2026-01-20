@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Theme Colors - These will be overridden by JavaScript */
+  --color-primary: #2563eb;
+  --color-secondary: #3b82f6;
+  --color-background: #050505;
+  --color-surface: #0a0a0a;
+  --color-surface-alt: #151515;
+  --color-text: #ffffff;
+  --color-text-muted: #9ca3af;
+  --color-border: #1f2937;
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-error: #ef4444;
+
+  /* Theme Fonts */
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, sans-serif;
+
+  /* Hero-specific */
+  --hero-bg: linear-gradient(135deg, #050505 0%, #0a1628 100%);
+  --hero-glow-color: #2563eb;
+  --hero-glow-opacity: 0.2;
+
+  /* Base settings */
+  font-family: var(--font-body);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  color: var(--color-text);
+  background-color: var(--color-background);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Links */
+a {
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: inherit;
+}
+a:hover {
+  color: var(--color-secondary);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* Buttons - Base styles */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.25s, background-color 0.25s;
+}
+button:hover {
+  border-color: var(--color-primary);
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Utility classes for theme colors */
+.bg-theme-background { background-color: var(--color-background); }
+.bg-theme-surface { background-color: var(--color-surface); }
+.bg-theme-surface-alt { background-color: var(--color-surface-alt); }
+.bg-theme-primary { background-color: var(--color-primary); }
+.bg-theme-secondary { background-color: var(--color-secondary); }
+
+.text-theme { color: var(--color-text); }
+.text-theme-muted { color: var(--color-text-muted); }
+.text-theme-primary { color: var(--color-primary); }
+.text-theme-secondary { color: var(--color-secondary); }
+
+.border-theme { border-color: var(--color-border); }
+.border-theme-primary { border-color: var(--color-primary); }

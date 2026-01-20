@@ -1,0 +1,6 @@
+name,iops,throughput
+QuickStor Z-Series,125000,6500
+Synology DS3622xs+,48000,2400
+QNAP TS-h2490FU,52000,2600
+TrueNAS Enterprise,78000,4200
+Dell PowerStore 500T,95000,5100
