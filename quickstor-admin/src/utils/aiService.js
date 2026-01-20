@@ -185,19 +185,83 @@ export const AIService = {
         return callGeminiAPI(prompt);
     },
 
-    streamContent: async (prompt, onChunk) => {
+    streamContent: async (promptOrObj, onChunk) => {
         const config = getAIConfig();
+        const prompt = typeof promptOrObj === 'string' ? promptOrObj : promptOrObj.text;
+        const attachments = (typeof promptOrObj === 'object' && promptOrObj.attachments) ? promptOrObj.attachments : [];
+
         if (config.provider === 'openai') {
+            // TODO: Implement OpenAI single-turn with attachments if needed
             return callOpenAIStream(prompt, onChunk, config.openai);
         }
+
+        // Gemini
+        if (attachments.length > 0) {
+            const parts = [{ text: prompt }];
+            attachments.forEach(file => {
+                const base64Data = file.base64.split(',')[1];
+                parts.push({
+                    inlineData: {
+                        mimeType: file.type,
+                        data: base64Data
+                    }
+                });
+            });
+            return callGeminiAPIStream(parts, onChunk);
+        }
+
         return callGeminiAPIStream(prompt, onChunk);
     },
 
     streamChat: async (messages, onChunk) => {
         const config = getAIConfig();
-        if (config.provider === 'openai') {
-            return callOpenAIWithHistoryStream(messages, onChunk, config.openai);
+        const isOpenAI = config.provider === 'openai';
+
+        // Pre-process messages to format attachments for the provider
+        const formattedMessages = messages.map(msg => {
+            // Keep existing simple text messages
+            if (msg.text && !msg.attachments?.length) {
+                return msg;
+            }
+
+            // Handle messages with attachments
+            if (msg.attachments?.length > 0) {
+                if (isOpenAI) {
+                    // OpenAI Format
+                    const content = [{ type: 'text', text: msg.text || '' }];
+                    msg.attachments.forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            content.push({
+                                type: 'image_url',
+                                image_url: { url: file.base64 }
+                            });
+                        }
+                    });
+                    return { role: msg.role, content }; // OpenAI uses 'content' array
+                } else {
+                    // Gemini Format
+                    const parts = [{ text: msg.text || '' }];
+                    msg.attachments.forEach(file => {
+                        // Extract base64 
+                        const base64Data = file.base64.split(',')[1];
+                        parts.push({
+                            inlineData: {
+                                mimeType: file.type,
+                                data: base64Data
+                            }
+                        });
+                    });
+                    return { role: msg.role, parts };
+                }
+            }
+
+            // Fallback
+            return msg;
+        });
+
+        if (isOpenAI) {
+            return callOpenAIWithHistoryStream(formattedMessages, onChunk, config.openai);
         }
-        return callGeminiAPIWithHistoryStream(messages, onChunk);
+        return callGeminiAPIWithHistoryStream(formattedMessages, onChunk);
     }
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Save, CheckCircle, AlertCircle, Download, Upload, Loader2, Database } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { getAIConfig, saveAIConfig } from '../utils/aiService';
+import { promptService } from '../utils/promptService';
 
 const Settings = () => {
     const fileInputRef = useRef(null);
@@ -14,6 +15,7 @@ const Settings = () => {
         }
     });
 
+    const [systemPrompt, setSystemPrompt] = useState('');
     const [status, setStatus] = useState({ type: '', message: '' });
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -22,12 +24,31 @@ const Settings = () => {
         // Load config on mount
         const savedConfig = getAIConfig();
         setConfig(savedConfig);
+
+        // Ensure prompt service is ready, then load prompt
+        const loadPrompt = async () => {
+            await promptService.init();
+            const customPrompt = localStorage.getItem('quickstor_system_prompt_custom');
+            // Use custom if exists, otherwise default
+            setSystemPrompt(customPrompt || promptService.get('system.default'));
+        };
+        loadPrompt();
     }, []);
+
+    const handleProviderChange = (value) => {
+        setConfig(prev => ({
+            ...prev,
+            provider: value
+        }));
+    };
 
     const handleChange = (field, value) => {
         setConfig(prev => ({
             ...prev,
-            [field]: value
+            [config.provider]: {
+                ...prev[config.provider],
+                [field]: value
+            }
         }));
     };
 
@@ -44,6 +65,15 @@ const Settings = () => {
     const handleSave = () => {
         try {
             saveAIConfig(config);
+
+            // Always Save System Prompt Customization
+            if (systemPrompt && systemPrompt !== promptService.get('system.default')) {
+                localStorage.setItem('quickstor_system_prompt_custom', systemPrompt);
+            } else {
+                // If it matches default or is empty, clear customization to keep it clean
+                localStorage.removeItem('quickstor_system_prompt_custom');
+            }
+
             setStatus({ type: 'success', message: 'Settings saved successfully' });
 
             // Clear status after 3 seconds
@@ -153,6 +183,15 @@ const Settings = () => {
         }
     };
 
+    const handleResetPrompt = async () => {
+        if (confirm('Reset system prompt to default?')) {
+            const defaults = await promptService.resetToDefaults();
+            const defaultPrompt = defaults?.system?.default || "";
+            setSystemPrompt(defaultPrompt);
+            localStorage.removeItem('quickstor_system_prompt_custom');
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -194,7 +233,7 @@ const Settings = () => {
                                 name="provider"
                                 value="gemini"
                                 checked={config.provider === 'gemini'}
-                                onChange={(e) => handleChange('provider', e.target.value)}
+                                onChange={(e) => handleProviderChange(e.target.value)}
                                 className="absolute top-4 right-4"
                             />
                             <span className="font-semibold text-gray-900">Google Gemini</span>
@@ -210,7 +249,7 @@ const Settings = () => {
                                 name="provider"
                                 value="openai"
                                 checked={config.provider === 'openai'}
-                                onChange={(e) => handleChange('provider', e.target.value)}
+                                onChange={(e) => handleProviderChange(e.target.value)}
                                 className="absolute top-4 right-4"
                             />
                             <span className="font-semibold text-gray-900">OpenAI / Compatible</span>
@@ -264,6 +303,35 @@ const Settings = () => {
 
                 <div className="p-4 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
                     Note: Gemini API Key is currently loaded from environment variables for security.
+                </div>
+            </div>
+
+            {/* AI System Prompt */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Library Sections AI System Prompt</h2>
+                        <p className="text-sm text-gray-500 mt-1">Customize the base instructions and persona for the AI.</p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={handleResetPrompt}
+                        className="text-sm text-gray-500 hover:text-gray-900"
+                    >
+                        Reset to Default
+                    </Button>
+                </div>
+                <div className="p-6">
+                    <textarea
+                        value={systemPrompt}
+                        onChange={(e) => setSystemPrompt(e.target.value)}
+                        className="w-full h-96 font-mono text-sm p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900"
+                        placeholder="Enter system prompt..."
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                        This prompt controls the AI's behavior, design system rules, and output format.
+                        Be careful when editing strict output rules (JSON format).
+                    </p>
                 </div>
             </div>
 

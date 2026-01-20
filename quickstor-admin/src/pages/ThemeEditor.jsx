@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useContentStore } from '../hooks/useContentStore';
 import { Palette, Type, Image, Sparkles, Save, Trash2, Check } from 'lucide-react';
 import { AIService, getProviderInfo } from '../utils/aiService';
+import { promptService } from '../utils/promptService';
 
 const ColorPicker = ({ label, value, onChange }) => (
     <div className="flex items-center justify-between py-2">
@@ -89,32 +90,13 @@ export default function ThemeEditor() {
 
         setIsGenerating(true);
 
-        const prompt = `Generate a website color theme based on this description: "${aiPrompt}"
+        let prompt = promptService.get('theme.generation');
+        if (!prompt) {
+            // Should be covered by init(), but fallback just in case of race condition or error
+            prompt = `Generate a website color theme based on this description: "{{userPrompt}}"\nReturn ONLY a valid JSON object.`;
+        }
 
-Return ONLY a valid JSON object with this exact structure (no markdown, no explanation):
-{
-  "colors": {
-    "primary": "#hexcolor",
-    "secondary": "#hexcolor", 
-    "background": "#hexcolor",
-    "surface": "#hexcolor",
-    "surfaceAlt": "#hexcolor",
-    "text": "#hexcolor",
-    "textMuted": "#hexcolor",
-    "border": "#hexcolor",
-    "success": "#22c55e",
-    "warning": "#eab308",
-    "error": "#ef4444"
-  },
-  "hero": {
-    "backgroundType": "gradient",
-    "backgroundValue": "linear-gradient(135deg, #color1 0%, #color2 100%)",
-    "glowColor": "#hexcolor",
-    "glowOpacity": 0.2
-  }
-}
-
-Make the theme visually cohesive and professional. Use the primary color as the main accent.`;
+        prompt = prompt.replace('{{userPrompt}}', aiPrompt);
 
         try {
             const response = await AIService.streamContent(prompt, () => { });

@@ -9,6 +9,7 @@ import { Trash2, Plus, AlertCircle, Upload, Sparkles, Loader2, Check, X, FileTex
 import { extractDataWithAI, generateSectionContent } from '../../utils/geminiService';
 import { getProviderInfo } from '../../utils/aiService';
 import { getExtractionPrompt, validateExtractedData } from '../../utils/extractionPrompts';
+import ImageUploadField from '../../components/ui/ImageUploadField';
 
 const PropertyPanel = () => {
   const { sections, selectedSectionId, updateSection, navbar, updateNavbar, footer, updateFooter, pages } = useContentStore();
@@ -703,21 +704,42 @@ const PropertyPanel = () => {
                   )}
                 </div>
 
-                {field.type === 'textarea' ? (
-                  <textarea
-                    className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-gray-400"
-                    value={content.content?.[field.key] || ''}
-                    onChange={(e) => handleCustomChange(field.key, e.target.value)}
-                    placeholder={field.description}
-                  />
-                ) : (
-                  <Input
-                    value={content.content?.[field.key] || ''}
-                    onChange={(e) => handleCustomChange(field.key, e.target.value)}
-                    className="text-gray-900"
-                    placeholder={field.description}
-                  />
-                )}
+                {/* Content Input */}
+                {(() => {
+                  const isImageField = field.type === 'image' ||
+                    field.key.toLowerCase().includes('image') ||
+                    field.label.toLowerCase().includes('image');
+
+                  if (isImageField) {
+                    return (
+                      <ImageUploadField
+                        value={content.content?.[field.key] || ''}
+                        onChange={(val) => handleCustomChange(field.key, val)}
+                        placeholder={field.description || "Image URL"}
+                      />
+                    );
+                  }
+
+                  if (field.type === 'textarea') {
+                    return (
+                      <textarea
+                        className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 placeholder:text-gray-400"
+                        value={content.content?.[field.key] || ''}
+                        onChange={(e) => handleCustomChange(field.key, e.target.value)}
+                        placeholder={field.description}
+                      />
+                    );
+                  }
+
+                  return (
+                    <Input
+                      value={content.content?.[field.key] || ''}
+                      onChange={(e) => handleCustomChange(field.key, e.target.value)}
+                      className="text-gray-900"
+                      placeholder={field.description}
+                    />
+                  );
+                })()}
 
                 {/* Style Controls for this field */}
                 <StyleControls

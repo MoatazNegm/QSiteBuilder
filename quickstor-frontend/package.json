@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "staging": "vite --mode staging --port 5176",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

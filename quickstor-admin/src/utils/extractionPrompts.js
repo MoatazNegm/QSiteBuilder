@@ -3,6 +3,8 @@
  * Each prompt is optimized to extract the exact data structure needed for that section type
  */
 
+import { promptService } from './promptService';
+
 const AVAILABLE_ICONS = [
   'Shield', 'ShieldCheck', 'Lock', 'Key', 'Zap', 'Cpu', 'Server', 'Database',
   'HardDrive', 'Activity', 'BarChart', 'LineChart', 'TrendingUp', 'Gauge',
@@ -29,122 +31,41 @@ export function getExtractionPrompt(sectionOrType, fileContent) {
     const schemaDescription = schema.map(field =>
       `- "${field.key}": ${field.description} (Type: ${field.type})`
     ).join('\n');
+    const schemaFields = schema.map(field => `"${field.key}": "extracted value"`).join(',\n  ');
 
-    return `You are a data extraction assistant. Extract content from the document to populate a website section.
+    let template = promptService.get('extraction.custom_html');
+    if (!template) return "Error: Prompt not loaded";
 
-OUTPUT SCHEMA (JSON Only):
-{
-  ${schema.map(field => `"${field.key}": "extracted value"`).join(',\n  ')}
-}
-
-FIELD DETAILS:
-${schemaDescription}
-
-EXTRACTION RULES:
-- Extract the most relevant information for each field from the document.
-- If a field cannot be found, use an empty string or a reasonable default based on context.
-- Keep text concise and suitable for a website section.
-- Return ONLY the JSON object, no explanation.
-
-DOCUMENT CONTENT:
-"""
-${fileContent.substring(0, 8000)}
-"""
-
-JSON OUTPUT:`;
+    return template
+      .replace('{{schemaFields}}', schemaFields)
+      .replace('{{schemaDescription}}', schemaDescription)
+      .replace('{{fileContent}}', fileContent.substring(0, 8000));
   }
 
-  const prompts = {
-    COMPARISON_GRAPH: `You are a data extraction assistant. Extract performance benchmark data from the following document.
-
-The data should be formatted as a JSON array where each item represents a competitor or product with their performance metrics.
-
-OUTPUT SCHEMA (strict):
-[
-  {
-    "name": "string (product/competitor name)",
-    "iops": number (I/O operations per second, extract as integer),
-    "throughput": number (throughput in MB/s, extract as integer)
-  }
-]
-
-EXTRACTION RULES:
-- Look for any mention of IOPS, I/O operations, read/write speeds
-- Look for throughput, bandwidth, MB/s, GB/s values (convert GB/s to MB/s by multiplying by 1000)
-- If a metric is missing, estimate it reasonably or use 0
-- Clean up product names to be concise (e.g., "QuickStor Z-Series" not "The QuickStor Z-Series storage solution")
-- Order results with the best performer LAST (for chart visual impact)
-- Return ONLY the JSON array, no explanation
-
-DOCUMENT CONTENT:
-"""
-${fileContent}
-"""
-
-JSON OUTPUT:`,
-
-    FEATURE_GRID: `You are a data extraction assistant. Extract feature/benefit information from the following document to create feature cards.
-
-OUTPUT SCHEMA (strict):
-[
-  {
-    "icon": "string (lucide-react icon name)",
-    "title": "string (short, punchy feature title, max 4 words)",
-    "description": "string (1-2 sentence description of the feature)"
-  }
-]
-
-AVAILABLE ICONS (choose from these only):
-${AVAILABLE_ICONS.join(', ')}
-
-EXTRACTION RULES:
-- Create 3-6 feature cards from the content
-- Choose icons that semantically match the feature (e.g., "Shield" for security, "Zap" for speed)
-- Titles should be concise and impactful (e.g., "Self-Healing Data", "Blazing Fast")
-- Descriptions should be benefit-focused, not just feature descriptions
-- If content is sparse, infer reasonable features from context
-- Return ONLY the JSON array, no explanation
-
-DOCUMENT CONTENT:
-"""
-${fileContent}
-"""
-
-JSON OUTPUT:`,
-
-    HERO: `You are a data extraction assistant. Extract landing page hero section content from the following document.
-
-OUTPUT SCHEMA (strict):
-{
-  "badge": "string (short badge text like 'NEW', 'V2.0', 'ENTERPRISE READY', max 3 words)",
-  "title": {
-    "line1": "string (first line of headline, typically 3-5 words)",
-    "highlight": "string (emphasized part of headline, 2-4 impactful words)"
-  },
-  "subtitle": "string (1-2 sentence supporting description)",
-  "primaryCta": "string (main call-to-action button text, 2-3 words, action-oriented)",
-  "secondaryCta": "string (secondary button text, 2-3 words)"
-}
-
-EXTRACTION RULES:
-- Badge should be uppercase, punchy, indicate newness or value
-- Title line1 + highlight should form a complete impactful headline
-- Make the highlight the most important/exciting part
-- Subtitle should explain the value proposition
-- CTAs should be action verbs (e.g., "GET STARTED", "VIEW DEMO", "LEARN MORE")
-- If content is marketing copy, extract the key messages
-- If content is technical, create marketing-friendly versions
-- Return ONLY the JSON object, no explanation
-
-DOCUMENT CONTENT:
-"""
-${fileContent}
-"""
-
-JSON OUTPUT:`
+  // Map section types to prompt keys
+  const keyMap = {
+    'COMPARISON_GRAPH': 'extraction.comparison_graph',
+    'FEATURE_GRID': 'extraction.feature_grid',
+    'HERO': 'extraction.hero'
   };
 
-  return prompts[sectionType] || prompts.FEATURE_GRID; // Default to feature grid
+  const promptKey = keyMap[sectionType] || 'extraction.feature_grid';
+  let template = promptService.get(promptKey);
+
+  if (!template) {
+    // Fallback or error if prompts aren't loaded yet (though init should have run)
+    return `Generate JSON for ${sectionType} from content: ${fileContent.substring(0, 1000)}...`;
+  }
+
+  // Replace common placeholders
+  let prompt = template.replace('{{fileContent}}', fileContent);
+
+  // Specific replacements
+  if (sectionType === 'FEATURE_GRID') {
+    prompt = prompt.replace('{{availableIcons}}', AVAILABLE_ICONS.join(', '));
+  }
+
+  return prompt;
 }
 
 /**

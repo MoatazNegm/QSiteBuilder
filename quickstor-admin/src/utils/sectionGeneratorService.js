@@ -12,10 +12,14 @@ import { getSectionGenerationPrompt, getAIPromptPrefix } from './styleContext';
  * @param {function(string, string): void} onProgress - Callback(chunk, fullText)
  * @returns {Promise<{html: string, schema: Array, defaultContent: Object, error: string|null}>}
  */
-export async function generateSectionHTML(userPrompt, onProgress) {
+export async function generateSectionHTML(userPrompt, onProgress, attachments = []) {
     try {
-        const prompt = getSectionGenerationPrompt(userPrompt);
-        const response = await AIService.streamContent(prompt, onProgress);
+        const promptText = getSectionGenerationPrompt(userPrompt);
+        // Pass object with text and attachments
+        const response = await AIService.streamContent({
+            text: promptText,
+            attachments
+        }, onProgress);
 
         // Clean up the response
         let text = response.trim();
@@ -64,7 +68,7 @@ export async function generateSectionHTML(userPrompt, onProgress) {
  * @param {function(string, string): void} onProgress - Callback(chunk, fullText)
  * @returns {Promise<{html: string, schema: Array, defaultContent: Object, error: string|null}>}
  */
-export async function editSectionWithChat(chatHistory, currentHTML, editRequest, onProgress) {
+export async function editSectionWithChat(chatHistory, currentHTML, editRequest, onProgress, attachments = []) {
     try {
         // Build the conversation for Gemini
         const systemContext = `${getAIPromptPrefix()}
@@ -92,14 +96,16 @@ Respond with a JSON object containing the COMPLETE updated "html", "schema", and
         chatHistory.forEach(msg => {
             messages.push({
                 role: msg.role === 'assistant' ? 'model' : 'user',
-                text: msg.content
+                text: msg.content,
+                attachments: msg.attachments // Pass history attachments
             });
         });
 
         // Add the new edit request
         messages.push({
             role: 'user',
-            text: `Edit request: ${editRequest}\n\nRespond with the complete JSON object only:`
+            text: `Edit request: ${editRequest}\n\nRespond with the complete JSON object only:`,
+            attachments: attachments // Pass new attachments
         });
 
         const response = await AIService.streamChat(messages, onProgress);

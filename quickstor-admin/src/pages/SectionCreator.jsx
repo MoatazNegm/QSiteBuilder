@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Sparkles, Code, Play, Save, Send, AlertCircle, Check, User, Bot, Trash2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, Code, Play, Save, Send, AlertCircle, Check, User, Bot, Trash2, Paperclip, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Label } from '../components/ui/Label';
@@ -32,6 +32,10 @@ const SectionCreator = () => {
   // Streaming state
   const [streamingContent, setStreamingContent] = useState('');
 
+  // Attachments state
+  const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
+
   // Publish modal state
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [sectionName, setSectionName] = useState('');
@@ -42,6 +46,87 @@ const SectionCreator = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, streamingContent]);
 
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    const newAttachments = [];
+
+    for (const file of files) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Max 2MB.`);
+        continue;
+      }
+
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+        });
+
+        newAttachments.push({
+          name: file.name,
+          type: file.type,
+          base64: base64
+        });
+      } catch (err) {
+        console.error("Error reading file:", err);
+      }
+    }
+
+    setAttachments(prev => [...prev, ...newAttachments]);
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const newAttachments = [];
+
+    for (const item of items) {
+      if (item.type.indexOf('image') === 0) {
+        e.preventDefault(); // Prevent default paste behavior for images
+
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`Clipboard image ${file.name} is too large. Max 2MB.`);
+          continue;
+        }
+
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+          });
+
+          newAttachments.push({
+            name: file.name || `pasted-image-${Date.now()}.png`,
+            type: file.type,
+            base64: base64
+          });
+        } catch (err) {
+          console.error("Error reading clipboard file:", err);
+        }
+      }
+    }
+
+    if (newAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...newAttachments]);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || isGenerating) return;
 
@@ -51,8 +136,11 @@ const SectionCreator = () => {
     setIsGenerating(true);
     setStreamingContent('');
 
+    const currentAttachments = [...attachments];
+    setAttachments([]); // Clear immediately
+
     // Add user message to chat
-    const newUserMessage = { role: 'user', content: userMessage };
+    const newUserMessage = { role: 'user', content: userMessage, attachments: currentAttachments };
     setChatHistory(prev => [...prev, newUserMessage]);
 
     try {
@@ -63,10 +151,10 @@ const SectionCreator = () => {
 
       if (!generatedCode) {
         // First message = initial generation
-        result = await generateSectionHTML(userMessage, onProgress);
+        result = await generateSectionHTML(userMessage, onProgress, currentAttachments);
       } else {
         // Subsequent messages = edit existing
-        result = await editSectionWithChat(chatHistory, generatedCode, userMessage, onProgress);
+        result = await editSectionWithChat(chatHistory, generatedCode, userMessage, onProgress, currentAttachments);
       }
 
       setStreamingContent('');
@@ -236,31 +324,47 @@ const SectionCreator = () => {
             ) : (
               <>
                 {chatHistory.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.role === 'assistant' && (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
-                        <Bot size={16} className="text-white" />
-                      </div>
-                    )}
+                  <React.Fragment key={index}>
                     <div
-                      className={`max-w-[80%] px-4 py-2 rounded-2xl ${message.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-md'
-                        : message.isError
-                          ? 'bg-red-50 text-red-700 border border-red-200 rounded-bl-md'
-                          : 'bg-gray-100 text-gray-900 rounded-bl-md'
-                        }`}
+                      className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    </div>
-                    {message.role === 'user' && (
-                      <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                        <User size={16} className="text-gray-600" />
+                      {message.role === 'assistant' && (
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+                          <Bot size={16} className="text-white" />
+                        </div>
+                      )}
+                      <div
+                        className={`max-w-[80%] px-4 py-2 rounded-2xl ${message.role === 'user'
+                          ? 'bg-blue-600 text-white rounded-br-md'
+                          : message.isError
+                            ? 'bg-red-50 text-red-700 border border-red-200 rounded-bl-md'
+                            : 'bg-gray-100 text-gray-900 rounded-bl-md'
+                          }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                       </div>
-                    )}
-                  </div>
+                      {message.role === 'user' && (
+                        <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                          <User size={16} className="text-gray-600" />
+                        </div>
+                      )}
+                    </div>
+                    {/* Attachments display in chat */}
+                    {
+                      message.attachments && message.attachments.length > 0 && (
+                        <div className={`flex gap-2 mb-2 ${message.role === 'user' ? 'justify-end pr-12' : 'pl-12'}`}>
+                          {message.attachments.map((file, i) => (
+                            <div key={i} className="flex items-center gap-1 text-xs bg-gray-100 border border-gray-200 px-2 py-1 rounded-md text-gray-600">
+                              {file.type.startsWith('image/') ? (
+                                <img src={file.base64} alt={file.name} className="w-4 h-4 object-cover rounded" />
+                              ) : <Paperclip size={12} />}
+                              <span className="max-w-[100px] truncate">{file.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    }
+                  </React.Fragment>
                 ))}
                 {isGenerating && (
                   <div className="flex gap-3">
@@ -296,12 +400,48 @@ const SectionCreator = () => {
 
           {/* Chat Input */}
           <div className="border-t border-gray-200 p-4 bg-gray-50">
+            {/* Attachment Preview */}
+            {attachments.length > 0 && (
+              <div className="flex gap-2 mb-2 flex-wrap">
+                {attachments.map((file, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-white border border-gray-200 pl-2 pr-1 py-1 rounded-md text-gray-700 shadow-sm">
+                    {file.type.startsWith('image/') ? (
+                      <img src={file.base64} alt={file.name} className="w-4 h-4 object-cover rounded" />
+                    ) : <Paperclip size={12} />}
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <button onClick={() => removeAttachment(i)} className="text-gray-400 hover:text-red-500 p-0.5">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="flex gap-2">
+              <input
+                type="file"
+                multiple
+                hidden
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept="image/*,text/*,.pdf" // Basic filter
+              />
+              <Button
+                variant="outline"
+                className="px-3 border-gray-300 bg-white hover:bg-gray-50 text-gray-500"
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach file (Max 2MB)"
+                disabled={isGenerating}
+              >
+                <Paperclip size={18} />
+              </Button>
+
               <textarea
                 ref={inputRef}
                 value={currentMessage}
                 onChange={(e) => setCurrentMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
+                onPaste={handlePaste}
                 placeholder={generatedCode ? "Ask for changes..." : "Describe the section you want..."}
                 className="flex-1 resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 rows={2}
@@ -414,7 +554,7 @@ const SectionCreator = () => {
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 };
 

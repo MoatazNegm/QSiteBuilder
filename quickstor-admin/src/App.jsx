@@ -15,7 +15,14 @@ import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import Settings from './pages/Settings';
 
+import { useEffect } from 'react';
+import { promptService } from './utils/promptService';
+
 function App() {
+  useEffect(() => {
+    promptService.init();
+  }, []);
+
   return (
     <ContentProvider>
       <BrowserRouter>

@@ -20,10 +20,15 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * Call Gemini API with a prompt and get a text response
  * Non-streaming fallback
  */
-export async function callGeminiAPI(prompt) {
+export async function callGeminiAPI(promptOrParts) {
     if (!GEMINI_API_KEY) {
         throw new Error('Gemini API key not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
     }
+
+    // Support both simple string prompt and complex parts array
+    const parts = typeof promptOrParts === 'string'
+        ? [{ text: promptOrParts }]
+        : promptOrParts;
 
     let lastError;
 
@@ -35,9 +40,7 @@ export async function callGeminiAPI(prompt) {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: prompt }]
-                    }],
+                    contents: [{ parts }],
                     generationConfig: {
                         temperature: 0.2,
                         topK: 40,
@@ -83,12 +86,16 @@ export async function callGeminiAPI(prompt) {
 /**
  * Call Gemini API with a prompt and stream the response
  */
-export async function callGeminiAPIStream(prompt, onChunk) {
+export async function callGeminiAPIStream(promptOrParts, onChunk) {
     if (!GEMINI_API_KEY) {
         throw new Error('Gemini API key not configured.');
     }
 
     const STREAM_URL = GEMINI_API_URL.replace('generateContent', 'streamGenerateContent');
+    const parts = typeof promptOrParts === 'string'
+        ? [{ text: promptOrParts }]
+        : promptOrParts;
+
     let fullText = '';
 
     try {
@@ -96,7 +103,7 @@ export async function callGeminiAPIStream(prompt, onChunk) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
+                contents: [{ parts }],
                 generationConfig: {
                     temperature: 0.2,
                     topK: 40,
@@ -147,7 +154,8 @@ export async function callGeminiAPIStream(prompt, onChunk) {
 
     } catch (error) {
         console.error('Streaming error:', error);
-        return callGeminiAPI(prompt);
+        // Fallback to non-streaming if needed, but usually we just throw
+        throw error;
     }
 }
 
@@ -160,9 +168,11 @@ export async function callGeminiAPIWithHistoryStream(messages, onChunk) {
     }
 
     const STREAM_URL = GEMINI_API_URL.replace('generateContent', 'streamGenerateContent');
+
+    // Updated to support attachments in history
     const contents = messages.map(msg => ({
         role: msg.role,
-        parts: [{ text: msg.text }]
+        parts: msg.parts || [{ text: msg.text }]
     }));
 
     let fullText = '';
@@ -226,9 +236,10 @@ export async function callGeminiAPIWithHistory(messages) {
         throw new Error('Gemini API key not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
     }
 
+    // Updated to support attachments in history
     const contents = messages.map(msg => ({
         role: msg.role,
-        parts: [{ text: msg.text }]
+        parts: msg.parts || [{ text: msg.text }]
     }));
 
     let lastError;
