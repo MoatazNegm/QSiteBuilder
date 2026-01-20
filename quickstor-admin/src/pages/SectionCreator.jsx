@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Sparkles, Code, Play, Save, Send, AlertCircle, Check, User, Bot, Trash2, Paperclip, X } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Label } from '../components/ui/Label';
 import { Input } from '../components/ui/Input';
@@ -13,9 +13,14 @@ import { getProviderInfo } from '../utils/aiService';
 
 const SectionCreator = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { customSections, setCustomSections } = useContentStore();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Edit mode: check if we're editing an existing section
+  const editingSection = location.state?.editingSection || null;
+  const [editingSectionId, setEditingSectionId] = useState(editingSection?.id || null);
 
   // Chat state
   const [chatHistory, setChatHistory] = useState([]);
@@ -45,6 +50,23 @@ const SectionCreator = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, streamingContent]);
+
+  // Initialize edit mode: pre-populate section data
+  useEffect(() => {
+    if (editingSection) {
+      setGeneratedCode(editingSection.html || '');
+      setSectionSchema(editingSection.schema || []);
+      setSectionContent(editingSection.defaultContent || {});
+
+      // Add context message to chat
+      setChatHistory([
+        {
+          role: 'assistant',
+          content: `📝 Editing section: "${editingSection.name}"\n\nThe section code is loaded. What changes would you like to make?`
+        }
+      ]);
+    }
+  }, []);
 
   const handleFileSelect = async (e) => {
     const files = Array.from(e.target.files);
@@ -220,18 +242,36 @@ const SectionCreator = () => {
 
     try {
       const firstUserMessage = chatHistory.find(m => m.role === 'user');
-      const newSection = {
-        id: `custom-${Date.now()}`,
-        name: sectionName || 'Custom Section',
-        html: generatedCode,
-        schema: sectionSchema,
-        defaultContent: sectionContent,
-        prompt: firstUserMessage?.content || '',
-        createdAt: new Date().toISOString()
-      };
 
-      // Add to content store (syncs with Firebase)
-      const updated = [...customSections, newSection];
+      let updated;
+      if (editingSectionId) {
+        // Update existing section
+        updated = customSections.map(s =>
+          s.id === editingSectionId
+            ? {
+              ...s,
+              name: sectionName || s.name,
+              html: generatedCode,
+              schema: sectionSchema,
+              defaultContent: sectionContent,
+              updatedAt: new Date().toISOString()
+            }
+            : s
+        );
+      } else {
+        // Create new section
+        const newSection = {
+          id: `custom-${Date.now()}`,
+          name: sectionName || 'Custom Section',
+          html: generatedCode,
+          schema: sectionSchema,
+          defaultContent: sectionContent,
+          prompt: firstUserMessage?.content || '',
+          createdAt: new Date().toISOString()
+        };
+        updated = [...customSections, newSection];
+      }
+
       setCustomSections(updated);
       localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
 
@@ -262,7 +302,7 @@ const SectionCreator = () => {
             </Button>
           </Link>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Create with AI</h1>
+            <h1 className="text-xl font-bold text-gray-900">{editingSectionId ? 'Edit with AI' : 'Create with AI'}</h1>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <span>Chat with AI to build and refine your section</span>
               <span className="w-1 h-1 rounded-full bg-gray-300"></span>
@@ -288,7 +328,7 @@ const SectionCreator = () => {
             disabled={!generatedCode}
             className="gap-2 bg-green-600 hover:bg-green-700 text-white shadow-sm border-transparent disabled:opacity-50"
           >
-            <Save size={16} /> Publish to Library
+            <Save size={16} /> {editingSectionId ? 'Save Changes' : 'Publish to Library'}
           </Button>
         </div>
       </div>

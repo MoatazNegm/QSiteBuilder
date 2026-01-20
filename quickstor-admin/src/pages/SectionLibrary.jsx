@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Edit, Trash2, Eye, Box, Sparkles } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Box, Sparkles, Copy } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
@@ -49,6 +49,36 @@ const SectionLibrary = () => {
       setCustomSections(updated);
       localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
     }
+  };
+
+  // Clone modal state
+  const [cloneModalOpen, setCloneModalOpen] = useState(false);
+  const [sectionToClone, setSectionToClone] = useState(null);
+  const [cloneName, setCloneName] = useState('');
+
+  const handleOpenCloneModal = (section) => {
+    setSectionToClone(section);
+    setCloneName(`${section.name} (Copy)`);
+    setCloneModalOpen(true);
+  };
+
+  const handleClone = () => {
+    if (!sectionToClone || !cloneName.trim()) return;
+
+    const clonedSection = {
+      ...sectionToClone,
+      id: `custom-${Date.now()}`,
+      name: cloneName.trim(),
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...customSections, clonedSection];
+    setCustomSections(updated);
+    localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
+
+    setCloneModalOpen(false);
+    setSectionToClone(null);
+    setCloneName('');
   };
 
   const PreviewComponent = previewSection ? getComponentByType(previewSection.type) : null;
@@ -129,15 +159,36 @@ const SectionLibrary = () => {
                     <span className="text-xs text-gray-400">
                       {new Date(section.createdAt).toLocaleDateString()}
                     </span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 bg-white border border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm transition-all"
-                      title="Delete"
-                      onClick={() => handleDeleteCustom(section.id)}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Link to="/sections/new" state={{ editingSection: section }}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 shadow-sm transition-all"
+                          title="Edit with AI"
+                        >
+                          <Edit size={14} />
+                        </Button>
+                      </Link>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 bg-white border border-gray-200 text-gray-700 hover:text-green-600 hover:bg-green-50 hover:border-green-200 shadow-sm transition-all"
+                        title="Clone"
+                        onClick={() => handleOpenCloneModal(section)}
+                      >
+                        <Copy size={14} />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 bg-white border border-gray-200 text-gray-700 hover:text-red-600 hover:bg-red-50 hover:border-red-200 shadow-sm transition-all"
+                        title="Delete"
+                        onClick={() => handleDeleteCustom(section.id)}
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -232,6 +283,50 @@ const SectionLibrary = () => {
           ) : (
             <div className="text-gray-500">Preview not available</div>
           )}
+        </div>
+      </Modal>
+
+      {/* Clone Modal */}
+      <Modal
+        isOpen={cloneModalOpen}
+        onClose={() => setCloneModalOpen(false)}
+        title="Clone Section"
+        className="max-w-md"
+      >
+        <div className="space-y-4 p-6 bg-white">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              New Section Name
+            </label>
+            <input
+              type="text"
+              value={cloneName}
+              onChange={(e) => setCloneName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+              placeholder="Enter a unique name"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500">
+              This name must be different from the original section.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              onClick={() => setCloneModalOpen(false)}
+              variant="outline"
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleClone}
+              disabled={!cloneName.trim() || cloneName === sectionToClone?.name}
+              className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
+            >
+              <Copy size={16} /> Clone
+            </Button>
+          </div>
         </div>
       </Modal>
     </div>
