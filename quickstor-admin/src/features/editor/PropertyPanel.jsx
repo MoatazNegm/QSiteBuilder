@@ -1,30 +1,14 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { useContentStore } from '../../hooks/useContentStore';
 import { Label } from '../../components/ui/Label';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
 import StyleControls from '../../components/ui/StyleControls';
-import { Trash2, Plus, AlertCircle, Upload, Sparkles, Loader2, Check, X, FileText, Wand2, Settings2 } from 'lucide-react';
-import { extractDataWithAI, generateSectionContent } from '../../utils/geminiService';
-import { getProviderInfo } from '../../utils/aiService';
-import { getExtractionPrompt, validateExtractedData } from '../../utils/extractionPrompts';
+import { Trash2, Plus, Settings2 } from 'lucide-react';
 import ImageUploadField from '../../components/ui/ImageUploadField';
 
 const PropertyPanel = () => {
   const { sections, selectedSectionId, updateSection, navbar, updateNavbar, footer, updateFooter, pages } = useContentStore();
-  const fileInputRef = useRef(null);
-
-  // AI State
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [extractedData, setExtractedData] = useState(null);
-  const [extractionError, setExtractionError] = useState(null);
-
-  // Modals State
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showPromptModal, setShowPromptModal] = useState(false);
-  const [userPrompt, setUserPrompt] = useState('');
 
   // Helper to determine what we are editing
   const isNavbar = selectedSectionId === 'NAVBAR';
@@ -167,67 +151,6 @@ const PropertyPanel = () => {
     );
   };
 
-  // --- AI-Powered File Processing ---
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setIsExtracting(true);
-    setExtractionError(null);
-    setExtractedData(null);
-
-    try {
-      const text = await file.text();
-
-      // Call AI to extract data (with fallback to CSV)
-      const result = await extractDataWithAI(text, selectedSection, getExtractionPrompt);
-
-      // Validate the extracted data
-      if (!validateExtractedData(result.data, selectedSection.type)) {
-        throw new Error('Returned data in an unexpected format. Please try again or use a different file.');
-      }
-
-      setExtractedData(result); // Now stores { data, method }
-      setShowConfirmModal(true);
-    } catch (error) {
-      console.error('Extraction Error:', error);
-      setExtractionError(error.message || 'Failed to extract data. Please try again.');
-    } finally {
-      setIsExtracting(false);
-      event.target.value = ''; // Reset input
-    }
-  };
-
-  const applyExtractedData = () => {
-    if (!extractedData?.data) return;
-
-    const actualData = extractedData.data;
-
-    if (selectedSection.type === 'COMPARISON_GRAPH') {
-      updateSection(selectedSection.id, { ...selectedSection.content, data: actualData });
-    } else if (selectedSection.type === 'FEATURE_GRID') {
-      updateSection(selectedSection.id, { ...selectedSection.content, features: actualData });
-    } else if (selectedSection.type === 'HERO') {
-      updateSection(selectedSection.id, { ...selectedSection.content, ...actualData });
-    } else if (selectedSection.type === 'CUSTOM_HTML') {
-      updateSection(selectedSection.id, {
-        ...selectedSection.content,
-        content: { ...selectedSection.content.content, ...actualData }
-      });
-    }
-
-    setShowConfirmModal(false);
-    setExtractedData(null);
-  };
-
-  const cancelExtraction = () => {
-    setShowConfirmModal(false);
-    setExtractedData(null);
-  };
-
-  const triggerFileUpload = () => {
-    fileInputRef.current.click();
-  };
 
   // Generic handler for top-level properties
   const handleChange = (key, value) => {
@@ -235,67 +158,8 @@ const PropertyPanel = () => {
     updateSection(selectedSection.id, newContent);
   };
 
-  // --- AI Generation Logic ---
-  const handleAIGenerate = async () => {
-    if (!userPrompt.trim()) return;
-
-    setIsGenerating(true);
-    setExtractionError(null);
-
-    try {
-      const generatedData = await generateSectionContent(selectedSection.type, userPrompt, selectedSection.content);
-
-      // Reuse the extracted data logic for preview/confirm
-      setExtractedData({ data: generatedData, method: 'ai-gen' });
-      setShowPromptModal(false);
-      setShowConfirmModal(true);
-      setUserPrompt('');
-    } catch (error) {
-      setExtractionError(error.message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
 
-  const SmartActions = ({ compact = false }) => (
-    <div className="space-y-3 p-1">
-      <div className="flex items-center justify-between px-1 mb-2">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">Smart Tools</p>
-        <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 truncate max-w-[100px]" title={getProviderInfo().name}>
-          {getProviderInfo().name}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        {/* File Import */}
-        <Button
-          onClick={triggerFileUpload}
-          disabled={isExtracting || isGenerating}
-          className={`w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm gap-2 border-none ${compact ? 'h-9 text-xs px-2' : 'h-10'}`}
-        >
-          {isExtracting ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          Import File
-        </Button>
-
-        {/* AI Generation */}
-        <Button
-          onClick={() => setShowPromptModal(true)}
-          disabled={isExtracting || isGenerating}
-          className={`w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white border-none shadow-md gap-2 ${compact ? 'h-9 text-xs px-2' : 'h-10'}`}
-        >
-          {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-          Write with AI
-        </Button>
-      </div>
-
-      {extractionError && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600 flex gap-2">
-          <AlertCircle size={14} className="shrink-0 mt-0.5" />
-          <span>{extractionError}</span>
-        </div>
-      )}
-    </div>
-  );
 
   // --- Feature Grid Editor Logic ---
   const renderFeatureGridFields = () => {
@@ -512,10 +376,7 @@ const PropertyPanel = () => {
       case 'HERO':
         return (
           <div className="space-y-6">
-            {/* AI Smart Tools */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-100">
-              <SmartActions />
-            </div>
+
 
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Manual Edit</h4>
@@ -589,10 +450,7 @@ const PropertyPanel = () => {
       case 'FEATURE_GRID':
         return (
           <div className="space-y-6">
-            {/* AI Smart Tools */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-100">
-              <SmartActions />
-            </div>
+
 
             {/* Global Styles */}
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -626,7 +484,7 @@ const PropertyPanel = () => {
                 </span>
               </div>
 
-              <SmartActions />
+
 
               {/* Mini Preview of Data */}
               <div className="mt-2 border-t border-gray-200 pt-2 max-h-32 overflow-y-auto">
@@ -686,9 +544,7 @@ const PropertyPanel = () => {
 
         return (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-100">
-              <SmartActions />
-            </div>
+
 
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Content Fields</h4>
@@ -768,15 +624,6 @@ const PropertyPanel = () => {
         </p>
       </div>
 
-      {/* Hidden File Input - Accept multiple formats */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept=".csv,.txt,.md,.json,.text"
-        onChange={handleFileUpload}
-      />
-
       <div className="p-5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200">
         {renderFields()}
       </div>
@@ -786,82 +633,6 @@ const PropertyPanel = () => {
           {(isNavbar || isFooter) ? 'Reset Defaults' : 'Reset Section to Defaults'}
         </Button>
       </div>
-
-      {/* Confirmation Modal */}
-      <Modal
-        isOpen={showConfirmModal}
-        onClose={cancelExtraction}
-        title={extractedData?.method === 'ai-gen' ? "AI Generated Content" : "AI Extraction Results"}
-        className="max-w-lg"
-      >
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-            <Check size={18} />
-            <span className="text-sm font-medium">
-              {extractedData?.method === 'ai-gen' ? "Content generated successfully!" : "Data extracted successfully!"}
-            </span>
-          </div>
-
-          <div className="max-h-80 overflow-y-auto">
-            {renderExtractedDataPreview()}
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <Button
-              onClick={cancelExtraction}
-              variant="outline"
-              className="flex-1 gap-2"
-            >
-              <X size={16} /> Cancel
-            </Button>
-            <Button
-              onClick={applyExtractedData}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white gap-2"
-            >
-              <Check size={16} /> Apply Data
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Prompt Input Modal */}
-      <Modal
-        isOpen={showPromptModal}
-        onClose={() => setShowPromptModal(false)}
-        title="Generate with AI"
-        className="max-w-lg"
-      >
-        <div className="space-y-4">
-          <div className="bg-violet-50 p-4 rounded-lg border border-violet-100">
-            <p className="text-sm text-violet-800 mb-2 font-medium">What kind of content do you want?</p>
-            <textarea
-              autoFocus
-              className="w-full h-32 p-3 rounded-md border border-violet-200 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 text-sm text-gray-900 bg-white placeholder:text-gray-400"
-              placeholder="e.g., A punchy hero section for a cybersecurity startup emphasizing zero-trust architecture..."
-              value={userPrompt}
-              onChange={(e) => setUserPrompt(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <Button
-              onClick={() => setShowPromptModal(false)}
-              variant="outline"
-              className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAIGenerate}
-              disabled={!userPrompt.trim() || isGenerating}
-              className="bg-violet-600 hover:bg-violet-700 text-white gap-2"
-            >
-              {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
-              Generate Content
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

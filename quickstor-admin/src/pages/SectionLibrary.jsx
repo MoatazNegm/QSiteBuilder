@@ -115,16 +115,24 @@ const SectionLibrary = () => {
               <Card key={section.id} className="group hover:shadow-md transition-all overflow-hidden flex flex-col border-gray-200 bg-white">
                 {/* Thumbnail Area */}
                 <div className="h-40 bg-[#050505] border-b border-gray-200 relative overflow-hidden">
-                  {/* Mini Preview Rendering (Scaled down) */}
-                  <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div style={{
-                      width: '400%',
-                      transform: 'scale(0.25)',
-                      transformOrigin: 'top left'
-                    }}>
-                      <div dangerouslySetInnerHTML={{ __html: section.html }} />
+                  {/* Show saved thumbnail if available, otherwise render HTML scaled */}
+                  {section.thumbnail ? (
+                    <img
+                      src={section.thumbnail}
+                      alt={section.name}
+                      className="absolute inset-0 w-full h-full object-cover object-top"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                      <div style={{
+                        width: '400%',
+                        transform: 'scale(0.25)',
+                        transformOrigin: 'top left'
+                      }}>
+                        <div dangerouslySetInnerHTML={{ __html: section.html }} />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[2px] z-10">

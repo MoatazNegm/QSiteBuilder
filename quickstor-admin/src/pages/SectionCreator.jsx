@@ -10,6 +10,7 @@ import { generateSectionHTML, editSectionWithChat } from '../utils/sectionGenera
 import CustomHTMLSection from '../components/CustomHTMLSection';
 import { useContentStore } from '../hooks/useContentStore';
 import { getProviderInfo } from '../utils/aiService';
+import html2canvas from 'html2canvas';
 
 const SectionCreator = () => {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ const SectionCreator = () => {
   // Attachments state
   const [attachments, setAttachments] = useState([]);
   const fileInputRef = useRef(null);
+  const previewRef = useRef(null);
 
   // Publish modal state
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -237,11 +239,26 @@ const SectionCreator = () => {
     setSectionName(suggestedName);
   };
 
-  const confirmPublish = () => {
+  const confirmPublish = async () => {
     setIsPublishing(true);
 
     try {
       const firstUserMessage = chatHistory.find(m => m.role === 'user');
+
+      // Capture thumbnail from preview
+      let thumbnail = null;
+      if (previewRef.current) {
+        try {
+          const canvas = await html2canvas(previewRef.current, {
+            scale: 0.5, // Lower resolution for smaller file size
+            useCORS: true,
+            backgroundColor: '#050505'
+          });
+          thumbnail = canvas.toDataURL('image/jpeg', 0.7);
+        } catch (err) {
+          console.warn('Failed to capture thumbnail:', err);
+        }
+      }
 
       let updated;
       if (editingSectionId) {
@@ -254,6 +271,7 @@ const SectionCreator = () => {
               html: generatedCode,
               schema: sectionSchema,
               defaultContent: sectionContent,
+              thumbnail: thumbnail || s.thumbnail,
               updatedAt: new Date().toISOString()
             }
             : s
@@ -266,6 +284,7 @@ const SectionCreator = () => {
           html: generatedCode,
           schema: sectionSchema,
           defaultContent: sectionContent,
+          thumbnail: thumbnail,
           prompt: firstUserMessage?.content || '',
           createdAt: new Date().toISOString()
         };
@@ -536,7 +555,7 @@ const SectionCreator = () => {
           <div className="flex-1 overflow-auto relative bg-gray-100">
             {generatedCode ? (
               viewMode === 'preview' ? (
-                <div className="w-full h-full bg-[#050505] overflow-auto">
+                <div ref={previewRef} className="w-full h-full bg-[#050505] overflow-auto">
                   <CustomHTMLSection html={generatedCode} content={sectionContent} />
                 </div>
               ) : (

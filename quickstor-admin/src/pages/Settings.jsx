@@ -16,6 +16,7 @@ const Settings = () => {
     });
 
     const [systemPrompt, setSystemPrompt] = useState('');
+    const [fillingPrompt, setFillingPrompt] = useState('');
     const [status, setStatus] = useState({ type: '', message: '' });
     const [isExporting, setIsExporting] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -25,12 +26,16 @@ const Settings = () => {
         const savedConfig = getAIConfig();
         setConfig(savedConfig);
 
-        // Ensure prompt service is ready, then load prompt
+        // Ensure prompt service is ready, then load prompts
         const loadPrompt = async () => {
             await promptService.init();
-            const customPrompt = localStorage.getItem('quickstor_system_prompt_custom');
-            // Use custom if exists, otherwise default
-            setSystemPrompt(customPrompt || promptService.get('system.default'));
+
+            // 1. Load General System Prompt
+            const customSystem = localStorage.getItem('quickstor_system_prompt_custom');
+            setSystemPrompt(customSystem || promptService.get('system.default'));
+
+            // 2. Load Content Filling Prompt
+            setFillingPrompt(promptService.getContentFillingPrompt());
         };
         loadPrompt();
     }, []);
@@ -66,12 +71,21 @@ const Settings = () => {
         try {
             saveAIConfig(config);
 
-            // Always Save System Prompt Customization
+            // 1. Save General System Prompt
             if (systemPrompt && systemPrompt !== promptService.get('system.default')) {
                 localStorage.setItem('quickstor_system_prompt_custom', systemPrompt);
             } else {
-                // If it matches default or is empty, clear customization to keep it clean
                 localStorage.removeItem('quickstor_system_prompt_custom');
+            }
+
+            // 2. Save Custom Content Filling Prompt
+            // We compare essentially against the default agent prompt logic. 
+            // Since getContentFillingPrompt returns the default if custom is missing, 
+            // we can just check if it's diff from default or just save if not empty.
+            if (fillingPrompt) {
+                localStorage.setItem('quickstor_content_filling_prompt', fillingPrompt);
+            } else {
+                localStorage.removeItem('quickstor_content_filling_prompt');
             }
 
             setStatus({ type: 'success', message: 'Settings saved successfully' });
@@ -93,17 +107,27 @@ const Settings = () => {
             if (!response.ok) throw new Error('Failed to fetch site data');
             const backendData = await response.json();
 
-            // 2. Gather Local Storage Data
+            // 2. Gather Local Storage Data (ALL QuickStor settings)
             const localConfig = {
+                // AI Configuration
                 quickstor_ai_config: localStorage.getItem('quickstor_ai_config'),
+                // Custom System Prompt
+                quickstor_system_prompt_custom: localStorage.getItem('quickstor_system_prompt_custom'),
+                // Custom Filling Prompt
+                quickstor_content_filling_prompt: localStorage.getItem('quickstor_content_filling_prompt'),
+                // Cached prompts from prompts.json
+                quickstor_prompts: localStorage.getItem('quickstor_prompts'),
+                // Custom AI-generated sections (with thumbnails)
                 quickstor_custom_sections: localStorage.getItem('quickstor_custom_sections'),
+                // Theme configurations
                 quickstor_themes: localStorage.getItem('quickstor_themes'),
-                quickstor_sections: localStorage.getItem('quickstor_sections') // In case we use local sections
+                // Local sections (if used)
+                quickstor_sections: localStorage.getItem('quickstor_sections')
             };
 
             // 3. Create Backup Bundle
             const backup = {
-                version: '1.0',
+                version: '2.0',
                 timestamp: new Date().toISOString(),
                 source: 'QuickStor Admin',
                 backendData,
@@ -183,12 +207,27 @@ const Settings = () => {
         }
     };
 
-    const handleResetPrompt = async () => {
-        if (confirm('Reset system prompt to default?')) {
-            const defaults = await promptService.resetToDefaults();
-            const defaultPrompt = defaults?.system?.default || "";
-            setSystemPrompt(defaultPrompt);
-            localStorage.removeItem('quickstor_system_prompt_custom');
+    const handleResetPrompt = async (type) => {
+        if (type === 'filling') {
+            if (confirm('Reset agent prompt to default?')) {
+                localStorage.removeItem('quickstor_content_filling_prompt');
+                // Force re-read default from service (re-instantiate logic)
+                // Just manually setting the hardcoded string for immediate UI update is safer or re-call service
+                // To avoid duplication, we will clear state and let reload or manual update handle it.
+                // Actually, PromptService doesn't have a 'getDefaultFillingPrompt' public method, 
+                // so we rely on getContentFillingPrompt falling back.
+
+                // Hack: Temporarily remove, call get, set state
+                const defaultPrompt = promptService.getContentFillingPrompt();
+                setFillingPrompt(defaultPrompt);
+            }
+        } else {
+            if (confirm('Reset system prompt to default?')) {
+                const defaults = await promptService.resetToDefaults();
+                const defaultPrompt = defaults?.system?.default || "";
+                setSystemPrompt(defaultPrompt);
+                localStorage.removeItem('quickstor_system_prompt_custom');
+            }
         }
     };
 
@@ -307,15 +346,16 @@ const Settings = () => {
             </div>
 
             {/* AI System Prompt */}
+            {/* 1. General System Prompt (Restored) */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                     <div>
                         <h2 className="text-lg font-semibold text-gray-900">Library Sections AI System Prompt</h2>
-                        <p className="text-sm text-gray-500 mt-1">Customize the base instructions and persona for the AI.</p>
+                        <p className="text-sm text-gray-500 mt-1">Customize the base instructions for general tasks.</p>
                     </div>
                     <Button
                         variant="ghost"
-                        onClick={handleResetPrompt}
+                        onClick={() => handleResetPrompt('system')}
                         className="text-sm text-gray-500 hover:text-gray-900"
                     >
                         Reset to Default
@@ -325,12 +365,36 @@ const Settings = () => {
                     <textarea
                         value={systemPrompt}
                         onChange={(e) => setSystemPrompt(e.target.value)}
-                        className="w-full h-96 font-mono text-sm p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900"
-                        placeholder="Enter system prompt..."
+                        className="w-full h-80 font-mono text-sm p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900"
+                        placeholder="Enter general system prompt..."
+                    />
+                </div>
+            </div>
+
+            {/* 2. Content Filling Agent Prompt (New) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">AI Filling Content Prompt</h2>
+                        <p className="text-sm text-gray-500 mt-1">Configure the agent persona that helps fill in section content.</p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => handleResetPrompt('filling')}
+                        className="text-sm text-gray-500 hover:text-gray-900"
+                    >
+                        Reset to Default Agent
+                    </Button>
+                </div>
+                <div className="p-6">
+                    <textarea
+                        value={fillingPrompt}
+                        onChange={(e) => setFillingPrompt(e.target.value)}
+                        className="w-full h-80 font-mono text-sm p-4 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 text-gray-900"
+                        placeholder="Enter agent system prompt..."
                     />
                     <p className="text-xs text-gray-500 mt-2">
-                        This prompt controls the AI's behavior, design system rules, and output format.
-                        Be careful when editing strict output rules (JSON format).
+                        This prompt controls the AI Agent when generating/filling content from the property panel.
                     </p>
                 </div>
             </div>

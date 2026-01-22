@@ -4,6 +4,7 @@
  */
 
 import { AIService } from './aiService';
+import { promptService } from './promptService';
 
 // Re-export extraction utilities so imports don't break
 // (These are pure functions, no dependencies)
@@ -63,7 +64,12 @@ export async function extractDataWithAI(fileContent, sectionOrType, getPrompt) {
     const sectionType = typeof sectionOrType === 'object' ? sectionOrType.type : sectionOrType;
 
     try {
-        const prompt = getPrompt(sectionOrType, fileContent);
+        let prompt = getPrompt(sectionOrType, fileContent);
+
+        // Inject System Prompt for consistency
+        const baseSystemPrompt = promptService.getSystemPrompt();
+        prompt = `${baseSystemPrompt}\n\n${prompt}`;
+
         // Use AIService instead of direct Gemini call
         const response = await AIService.generateContent(prompt);
         const extractedData = extractJSONFromResponse(response);
@@ -88,7 +94,7 @@ export async function extractDataWithAI(fileContent, sectionOrType, getPrompt) {
 /**
  * Generate content for a specific section based on user prompt
  */
-export async function generateSectionContent(sectionType, userPrompt, currentContent = {}) {
+export async function generateSectionContent(sectionType, userPrompt, currentContent = {}, attachment = null) {
     let schemaDescription = '';
     let exampleJSON = '';
 
@@ -153,11 +159,35 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
             throw new Error(`Unsupported section type for AI generation: ${sectionType}`);
     }
 
-    const systemPrompt = `
-    You are a professional UX copywriter and web designer.
-    Generate JSON content for a website section of type: ${sectionType}.
+    const baseSystemPrompt = promptService.getContentFillingPrompt();
+
+    // Check provider and handle attachments accordingly
+    const { getAIConfig } = await import('./aiService');
+    const config = getAIConfig();
+    const isGemini = config.provider === 'gemini';
+
+    // Determine if we can use the attachment
+    let effectiveAttachment = null;
+    if (attachment) {
+        const isImageAttachment = attachment.type?.startsWith('image/');
+
+        if (isImageAttachment && !isGemini) {
+            // OpenAI-compatible providers (like DeepSeek) don't support image inputs
+            console.warn('Image attachments are only supported with Gemini. Skipping image for OpenAI-compatible provider.');
+            // Don't throw - just proceed without the image
+            // User can still use text attachments
+        } else {
+            effectiveAttachment = attachment;
+        }
+    }
+
+    const fullPrompt = `
+    ${baseSystemPrompt}
+    
+    TASK: Generate JSON content for a website section of type: ${sectionType}.
     
     The user wants content about: "${userPrompt}"
+    ${effectiveAttachment ? `(Refer to the attached ${effectiveAttachment.type.startsWith('image/') ? 'image' : 'file'} for context)` : ''}
     
     Strictly follow this JSON structure:
     ${schemaDescription}
@@ -168,7 +198,11 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
     `;
 
     try {
-        const response = await AIService.generateContent(systemPrompt);
+        const payload = effectiveAttachment
+            ? { text: fullPrompt, attachments: [effectiveAttachment] }
+            : fullPrompt;
+
+        const response = await AIService.generateContent(payload);
         return extractJSONFromResponse(response);
     } catch (error) {
         console.error('AI Generation Failed:', error);

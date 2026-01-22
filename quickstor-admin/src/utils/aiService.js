@@ -9,27 +9,36 @@ const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
 
 // --- OpenAI Implementation ---
 
-async function callOpenAI(prompt, config) {
-    const { apiKey, baseUrl = OPENAI_DEFAULT_URL, model = 'gpt-4o' } = config;
-
+// --- OpenAI Proxy Helper ---
+async function callOpenAIProxy(url, apiKey, body) {
     try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await fetch('http://localhost:3000/api/proxy/openai', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, apiKey, body })
         });
 
         if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.error?.message || `OpenAI API error: ${response.status}`);
+            const text = await response.text();
+            throw new Error(text || `Proxy Error: ${response.status}`);
         }
+        return response;
+    } catch (e) {
+        console.error('Proxy Request Failed:', e);
+        throw e;
+    }
+}
+
+async function callOpenAI(prompt, config) {
+    const { apiKey, baseUrl = OPENAI_DEFAULT_URL, model = 'gpt-4o' } = config;
+    const url = `${baseUrl}/chat/completions`;
+
+    try {
+        const response = await callOpenAIProxy(url, apiKey, {
+            model: model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7
+        });
 
         const data = await response.json();
         return data.choices?.[0]?.message?.content || '';
@@ -41,23 +50,25 @@ async function callOpenAI(prompt, config) {
 
 async function callOpenAIStream(prompt, onChunk, config) {
     const { apiKey, baseUrl = OPENAI_DEFAULT_URL, model = 'gpt-4o' } = config;
+    const url = `${baseUrl}/chat/completions`;
 
     try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await fetch('http://localhost:3000/api/proxy/openai', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7,
-                stream: true
+                url,
+                apiKey,
+                body: {
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.7,
+                    stream: true
+                }
             })
         });
 
-        if (!response.ok) throw new Error(`OpenAI API error: ${response.status}`);
+        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -94,6 +105,7 @@ async function callOpenAIStream(prompt, onChunk, config) {
 
 async function callOpenAIWithHistoryStream(messages, onChunk, config) {
     const { apiKey, baseUrl = OPENAI_DEFAULT_URL, model = 'gpt-4o' } = config;
+    const url = `${baseUrl}/chat/completions`;
 
     // Map 'model' role to 'assistant' for OpenAI
     const openAIMessages = messages.map(m => ({
@@ -102,21 +114,22 @@ async function callOpenAIWithHistoryStream(messages, onChunk, config) {
     }));
 
     try {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await fetch('http://localhost:3000/api/proxy/openai', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: model,
-                messages: openAIMessages,
-                temperature: 0.7,
-                stream: true
+                url,
+                apiKey,
+                body: {
+                    model: model,
+                    messages: openAIMessages,
+                    temperature: 0.7,
+                    stream: true
+                }
             })
         });
 
-        if (!response.ok) throw new Error(`OpenAI API error: ${response.status}`);
+        if (!response.ok) throw new Error(`Proxy error: ${response.status}`);
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -177,11 +190,49 @@ export const saveAIConfig = (config) => {
 };
 
 export const AIService = {
-    generateContent: async (prompt) => {
+    generateContent: async (promptOrObj) => {
         const config = getAIConfig();
+        const prompt = typeof promptOrObj === 'string' ? promptOrObj : promptOrObj.text;
+        const attachments = (typeof promptOrObj === 'object' && promptOrObj.attachments) ? promptOrObj.attachments : [];
+
         if (config.provider === 'openai') {
-            return callOpenAI(prompt, config.openai);
+            // TODO: Add attachment support for OpenAI if needed
+            // For now, if text file, append to prompt
+            let finalPrompt = prompt;
+            if (attachments.length > 0) {
+                attachments.forEach(att => {
+                    if (att.text) {
+                        finalPrompt += `\n\n[Attached Context: ${att.name}]\n${att.text}`;
+                    }
+                });
+            }
+            return callOpenAI(finalPrompt, config.openai);
         }
+
+        // Gemini
+        if (attachments.length > 0) {
+            const parts = [{ text: prompt }];
+            attachments.forEach(file => {
+                // If it has base64 (Image), use inlineData
+                if (file.base64) {
+                    const base64Data = file.base64.split(',')[1];
+                    parts.push({
+                        inlineData: {
+                            mimeType: file.type,
+                            data: base64Data
+                        }
+                    });
+                }
+                // If it has text content (Text File), append as text part
+                else if (file.text) {
+                    parts.push({
+                        text: `\n\n[Attached Context: ${file.name}]\n${file.text}`
+                    });
+                }
+            });
+            return callGeminiAPI(parts);
+        }
+
         return callGeminiAPI(prompt);
     },
 

@@ -65,6 +65,40 @@ class PromptService {
     }
 
     /**
+     * Get the active system prompt (Custom or Default)
+     */
+    /**
+     * Get the active "AI Filling Content Prompt"
+     */
+    getContentFillingPrompt() {
+        // Try custom first (User defined)
+        const custom = localStorage.getItem('quickstor_content_filling_prompt');
+        if (custom) return custom;
+
+        // Fallback: Default Agent Persona
+        return `You are an expert Content Architect and Web Copywriter Agent.
+Your goal is to help the user perfectly fill in the content fields for their website sections.
+You are creative, concise, and technically precise with JSON structure.
+You understand modern web design trends and write engaging, conversion-focused copy.
+When a user provides a file or image, analyze it deeply to extract relevant themes, tone, and details to generate the best possible content match.`;
+    }
+
+    /**
+     * Get the general system prompt (Legacy / General)
+     */
+    /**
+     * Get the general system prompt (Legacy / General)
+     */
+    getSystemPrompt() {
+        // Try custom first
+        const custom = localStorage.getItem('quickstor_system_prompt_custom');
+        if (custom) return custom;
+
+        // Fallback to default in prompts.json
+        return this.get('system.default') || "You are a professional UX copywriter and web designer.";
+    }
+
+    /**
      * Reload prompts from source (Reset to defaults)
      */
     async resetToDefaults() {
