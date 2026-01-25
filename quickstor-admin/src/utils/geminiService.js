@@ -3,7 +3,7 @@
  * Handles high-level content generation logic using the configured AI provider
  */
 
-import { AIService } from './aiService';
+import { AIService, estimateTokenCount, getContextLimit, summarizeDocumentForContext, getAIConfig } from './aiService';
 import { promptService } from './promptService';
 
 // Re-export extraction utilities so imports don't break
@@ -93,8 +93,13 @@ export async function extractDataWithAI(fileContent, sectionOrType, getPrompt) {
 
 /**
  * Generate content for a specific section based on user prompt
+ * @param {string} sectionType - The type of section to generate
+ * @param {string} userPrompt - User's content request
+ * @param {object} currentContent - Current section content/schema
+ * @param {object} attachment - Optional file attachment
+ * @param {function} onProgress - Optional callback for progress updates
  */
-export async function generateSectionContent(sectionType, userPrompt, currentContent = {}, attachment = null) {
+export async function generateSectionContent(sectionType, userPrompt, currentContent = {}, attachment = null, onProgress = null) {
     let schemaDescription = '';
     let exampleJSON = '';
 
@@ -149,11 +154,40 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
             }`;
             break;
         case 'CUSTOM_HTML':
-            schemaDescription = `
+            // Dynamically build schema from the section's actual schema
+            if (currentContent.schema && currentContent.schema.length > 0) {
+                const fieldDescriptions = currentContent.schema.map(field => {
+                    let typeHint = 'text';
+                    if (field.type === 'image') typeHint = 'image URL';
+                    else if (field.type === 'textarea') typeHint = 'longer text (paragraph)';
+                    else if (field.type === 'url') typeHint = 'URL';
+                    return `- ${field.key}: ${field.label} (${typeHint})`;
+                }).join('\n            ');
+
+                schemaDescription = `
+            A JSON object with these exact keys:
+            ${fieldDescriptions}
+            `;
+
+                // Build example JSON from actual schema
+                const exampleObj = {};
+                currentContent.schema.forEach(field => {
+                    if (field.type === 'image') {
+                        exampleObj[field.key] = 'https://example.com/image.jpg';
+                    } else if (field.type === 'textarea') {
+                        exampleObj[field.key] = 'A detailed description or paragraph of content.';
+                    } else {
+                        exampleObj[field.key] = `${field.label} content`;
+                    }
+                });
+                exampleJSON = JSON.stringify(exampleObj, null, 4);
+            } else {
+                schemaDescription = `
             A JSON object with keys matching the section's content fields.
             Common fields might include title, subtitle, image_url, etc.
             `;
-            exampleJSON = `{ "title": "Custom Section", "description": "Generated content" }`;
+                exampleJSON = `{ "title": "Custom Section", "description": "Generated content" }`;
+            }
             break;
         default:
             throw new Error(`Unsupported section type for AI generation: ${sectionType}`);
@@ -162,7 +196,6 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
     const baseSystemPrompt = promptService.getContentFillingPrompt();
 
     // Check provider and handle attachments accordingly
-    const { getAIConfig } = await import('./aiService');
     const config = getAIConfig();
     const isGemini = config.provider === 'gemini';
 
@@ -181,6 +214,48 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
         }
     }
 
+    // For OpenAI-compatible providers, check if text attachment exceeds context limit
+    if (effectiveAttachment && effectiveAttachment.text && !isGemini) {
+        const contextLimit = getContextLimit(config);
+
+        // Be VERY conservative with available space
+        // The full prompt (schema, examples, formatting) can be 2000+ tokens
+        // Plus we need response room of 4000+ tokens
+        // Use only 40% of context for the document to be safe
+        const safeDocumentLimit = Math.floor(contextLimit * 0.4); // ~52K for DeepSeek
+
+        const documentTokens = estimateTokenCount(effectiveAttachment.text);
+
+        console.log(`=== Context Limit Check ===`);
+        console.log(`Provider Context Limit: ${contextLimit} tokens`);
+        console.log(`Safe Document Limit (40%): ~${safeDocumentLimit} tokens`);
+        console.log(`Document Tokens: ~${documentTokens}`);
+
+        if (documentTokens > safeDocumentLimit) {
+            if (onProgress) onProgress('Document too large, summarizing...');
+
+            // Summarize the document to fit within context
+            const summarizedText = await summarizeDocumentForContext(
+                effectiveAttachment.text,
+                safeDocumentLimit,
+                config,
+                onProgress  // Pass the progress callback
+            );
+
+            // Update attachment with summarized content
+            effectiveAttachment = {
+                ...effectiveAttachment,
+                text: summarizedText,
+                name: `${effectiveAttachment.name} (Summarized)`
+            };
+
+            console.log(`Document summarized successfully.`);
+        } else {
+            console.log(`Document fits within context limit.`);
+        }
+        console.log(`===========================`);
+    }
+
     const fullPrompt = `
     ${baseSystemPrompt}
     
@@ -189,15 +264,42 @@ export async function generateSectionContent(sectionType, userPrompt, currentCon
     The user wants content about: "${userPrompt}"
     ${effectiveAttachment ? `(Refer to the attached ${effectiveAttachment.type.startsWith('image/') ? 'image' : 'file'} for context)` : ''}
     
-    Strictly follow this JSON structure:
+    IMPORTANT: You MUST include ALL fields listed below. Do not skip any field.
+    
+    Required JSON structure (include EVERY field):
     ${schemaDescription}
     
-    Return ONLY raw JSON. No markdown formatting. No backticks.
+    RULES:
+    1. Return ONLY raw JSON - no markdown, no backticks, no explanations
+    2. Include ALL fields listed above - every single one
+    3. Generate creative, relevant content for each field based on the user's request
+    
     Example format:
     ${exampleJSON}
     `;
 
+    // Debug: Log the full prompt and token estimate
+    const promptCharCount = fullPrompt.length;
+    const estimatedTokens = Math.ceil(promptCharCount / 4); // ~4 chars per token estimate
+
+    console.log('=== AI Content Generation Debug ===');
+    console.log('Full Prompt:\n', fullPrompt);
+    console.log('---');
+    console.log(`Prompt Length: ${promptCharCount} characters`);
+    console.log(`Estimated Tokens (prompt only): ~${estimatedTokens}`);
+
+    if (effectiveAttachment) {
+        const attachmentSize = effectiveAttachment.base64?.length || effectiveAttachment.text?.length || 0;
+        const attachmentTokens = Math.ceil(attachmentSize / 4);
+        console.log(`Attachment Size: ${attachmentSize} characters`);
+        console.log(`Estimated Attachment Tokens: ~${attachmentTokens}`);
+        console.log(`TOTAL Estimated Tokens: ~${estimatedTokens + attachmentTokens}`);
+    }
+    console.log('===================================');
+
     try {
+        if (onProgress) onProgress('Generating content...');
+
         const payload = effectiveAttachment
             ? { text: fullPrompt, attachments: [effectiveAttachment] }
             : fullPrompt;

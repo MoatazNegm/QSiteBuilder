@@ -7,6 +7,171 @@ import { callGeminiAPI, callGeminiAPIStream, callGeminiAPIWithHistoryStream, cal
 
 const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
 
+// --- Token Estimation & Context Management ---
+
+/**
+ * Estimate token count from text (~4 characters per token for English)
+ */
+export function estimateTokenCount(text) {
+    if (!text) return 0;
+    return Math.ceil(text.length / 4);
+}
+
+/**
+ * Get context limit for the current provider/model
+ * DeepSeek models have 131,072 token context
+ */
+export function getContextLimit(config) {
+    if (config?.provider === 'openai') {
+        const model = config.openai?.model?.toLowerCase() || '';
+        // DeepSeek models
+        if (model.includes('deepseek')) {
+            return 131072;
+        }
+        // GPT-4 Turbo / GPT-4o
+        if (model.includes('gpt-4')) {
+            return 128000;
+        }
+        // GPT-3.5
+        if (model.includes('gpt-3.5')) {
+            return 16385;
+        }
+        // Default for unknown OpenAI-compatible
+        return 32000;
+    }
+    // Gemini has 1M+ context, effectively unlimited for our use
+    return 1000000;
+}
+
+/**
+ * Summarize a document to fit within target token count
+ * Uses chunked summarization to handle documents larger than the context window
+ * @param {string} text - The document text to summarize
+ * @param {number} targetTokens - Target token count for the summary
+ * @param {object} config - AI configuration
+ * @param {function} onProgress - Optional callback for progress updates
+ */
+export async function summarizeDocumentForContext(text, targetTokens, config, onProgress = null) {
+    const currentTokens = estimateTokenCount(text);
+
+    // Helper to report progress
+    const report = (msg) => {
+        console.log(msg);
+        if (onProgress) onProgress(msg);
+    };
+
+    // If already within limit, return as-is
+    if (currentTokens <= targetTokens) {
+        console.log(`Document already fits: ${currentTokens} <= ${targetTokens} tokens`);
+        return text;
+    }
+
+    report(`Analyzing document (~${Math.round(currentTokens / 1000)}K tokens)...`);
+
+    const contextLimit = getContextLimit(config);
+
+    // Use only 25% of context for the chunk to leave room for prompt + response
+    const maxChunkTokens = Math.floor(contextLimit * 0.25);
+    const maxChunkChars = maxChunkTokens * 4;
+
+    // If the document is small enough to summarize in one call, do it directly
+    if (currentTokens < maxChunkTokens) {
+        report('Summarizing document...');
+        return await summarizeSingleChunk(text, targetTokens, config);
+    }
+
+    // CHUNKED SUMMARIZATION: Split document into chunks that fit in context
+    const chunks = [];
+    let remaining = text;
+
+    while (remaining.length > 0) {
+        const chunk = remaining.substring(0, maxChunkChars);
+        chunks.push(chunk);
+        remaining = remaining.substring(maxChunkChars);
+    }
+
+    report(`Splitting into ${chunks.length} chunks for processing...`);
+
+    // Each chunk summary should be aggressively compressed
+    const tokensPerChunkSummary = Math.min(
+        Math.floor(maxChunkTokens / 10),
+        Math.floor(targetTokens / chunks.length)
+    );
+
+    // Summarize each chunk sequentially
+    const chunkSummaries = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+        report(`Summarizing chunk ${i + 1} of ${chunks.length}...`);
+        const summary = await summarizeSingleChunk(chunks[i], tokensPerChunkSummary, config);
+        chunkSummaries.push(summary);
+    }
+
+    // Combine all chunk summaries
+    const combinedSummary = chunkSummaries.join('\n\n');
+    const combinedTokens = estimateTokenCount(combinedSummary);
+
+    console.log(`Combined summaries: ~${combinedTokens} tokens (target: ${targetTokens})`);
+
+    // If combined is still too large, recursively summarize again
+    if (combinedTokens > targetTokens) {
+        report('Running additional compression pass...');
+        return await summarizeDocumentForContext(combinedSummary, targetTokens, config, onProgress);
+    }
+
+    report('Document summarization complete!');
+    return combinedSummary;
+}
+
+/**
+ * Summarize a single chunk of text (must fit within context window)
+ */
+async function summarizeSingleChunk(text, targetTokens, config) {
+    const targetChars = targetTokens * 4;
+
+    const summarizePrompt = `You are a document summarizer. Condense the following text while preserving key information.
+
+TARGET: ~${targetChars} characters (about ${targetTokens} tokens).
+
+RULES:
+1. Preserve specific facts, figures, statistics, and data points
+2. Keep important names, dates, and technical terms
+3. Use concise language but don't lose critical information
+4. Output ONLY the summary, no explanations
+
+TEXT TO SUMMARIZE:
+${text}
+
+SUMMARY:`;
+
+    try {
+        const { apiKey, baseUrl = OPENAI_DEFAULT_URL, model = 'gpt-4o' } = config.openai;
+        const url = `${baseUrl}/chat/completions`;
+
+        const response = await callOpenAIProxy(url, apiKey, {
+            model: model,
+            messages: [{ role: 'user', content: summarizePrompt }],
+            temperature: 0.3,
+            max_tokens: Math.min(targetTokens + 500, 8000)
+        });
+
+        const data = await response.json();
+
+        // Check for API errors
+        if (data.error) {
+            throw new Error(data.error.message || 'API Error');
+        }
+
+        const summary = data.choices?.[0]?.message?.content || '';
+        return summary;
+    } catch (error) {
+        console.error('Chunk summarization failed:', error);
+        // Fallback: truncate this chunk
+        console.warn('Falling back to truncation for this chunk...');
+        return text.substring(0, targetChars);
+    }
+}
+
 // --- OpenAI Implementation ---
 
 // --- OpenAI Proxy Helper ---

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, Settings, Menu, X, ChevronDown, ChevronRight, Plus, FileText, Library, Palette } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, Menu, X, ChevronDown, ChevronRight, Plus, FileText, Library, Palette, Trash2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useContentStore } from '../../hooks/useContentStore';
 
@@ -9,7 +9,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const { pages, activePageId, setActivePageId, addPage } = useContentStore();
+  const { pages, activePageId, setActivePageId, addPage, deletePage } = useContentStore();
 
   const [isPagesOpen, setIsPagesOpen] = useState(true); // Default open to show pages
 
@@ -81,27 +81,44 @@ const AdminLayout = () => {
                 {pages.map((page) => {
                   const isActive = activePageId === page.id;
                   return (
-                    <button
-                      key={page.id}
-                      onClick={() => {
-                        setActivePageId(page.id);
-                        setIsSidebarOpen(false);
-                        navigate('/');
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2 w-full text-left rounded-md text-xs transition-all group border ${isActive
-                        ? 'bg-blue-600/10 border-blue-600/20 text-white hover:text-white shadow-sm'
-                        : 'border-transparent text-gray-400 hover:bg-gray-900 hover:border-gray-800 hover:text-white'
-                        }`}
-                    >
-                      <FileText
-                        size={14}
-                        className={`transition-colors ${isActive
-                          ? "text-blue-400"
-                          : "text-gray-600 group-hover:text-gray-300"
+                    <div key={page.id} className="relative group flex items-center">
+                      <button
+                        onClick={() => {
+                          setActivePageId(page.id);
+                          setIsSidebarOpen(false);
+                          navigate('/');
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 w-full text-left rounded-md text-xs transition-all border ${isActive
+                          ? 'bg-blue-600/10 border-blue-600/20 text-white hover:text-white shadow-sm'
+                          : 'border-transparent text-gray-400 hover:bg-gray-900 hover:border-gray-800 hover:text-white'
                           }`}
-                      />
-                      {page.title}
-                    </button>
+                      >
+                        <FileText
+                          size={14}
+                          className={`transition-colors ${isActive
+                            ? "text-blue-400"
+                            : "text-gray-600 group-hover:text-gray-300"
+                            }`}
+                        />
+                        {page.title}
+                      </button>
+
+                      {/* Delete Button */}
+                      {page.id !== 'home' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Delete page "${page.title}"? This cannot be undone.`)) {
+                              deletePage(page.id);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-900/20 rounded absolute right-1 transition-all"
+                          title="Delete Page"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
 
@@ -170,7 +187,7 @@ const AdminLayout = () => {
           <Outlet />
         </div>
       </main>
-    </div>
+    </div >
   );
 };
 

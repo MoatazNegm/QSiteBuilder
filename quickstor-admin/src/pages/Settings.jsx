@@ -3,9 +3,19 @@ import { Save, CheckCircle, AlertCircle, Download, Upload, Loader2, Database } f
 import { Button } from '../components/ui/Button';
 import { getAIConfig, saveAIConfig } from '../utils/aiService';
 import { promptService } from '../utils/promptService';
+import { useContentStore } from '../hooks/useContentStore';
 
 const Settings = () => {
     const fileInputRef = useRef(null);
+    const {
+        pages,
+        navbar,
+        footer,
+        activeTheme,
+        savedThemes,
+        customSections
+    } = useContentStore();
+
     const [config, setConfig] = useState({
         provider: 'gemini', // 'gemini' | 'openai'
         openai: {
@@ -102,48 +112,56 @@ const Settings = () => {
         setStatus({ type: '', message: '' });
 
         try {
-            // 1. Fetch Backend Data
+            // 1. Fetch Backend Data (for Live/legacy data)
             const response = await fetch('http://localhost:3000/api/data');
             if (!response.ok) throw new Error('Failed to fetch site data');
             const backendData = await response.json();
 
-            // 2. Gather Local Storage Data (ALL QuickStor settings)
-            const localConfig = {
-                // AI Configuration
-                quickstor_ai_config: localStorage.getItem('quickstor_ai_config'),
-                // Custom System Prompt
-                quickstor_system_prompt_custom: localStorage.getItem('quickstor_system_prompt_custom'),
-                // Custom Filling Prompt
-                quickstor_content_filling_prompt: localStorage.getItem('quickstor_content_filling_prompt'),
-                // Cached prompts from prompts.json
-                quickstor_prompts: localStorage.getItem('quickstor_prompts'),
-                // Custom AI-generated sections (with thumbnails)
-                quickstor_custom_sections: localStorage.getItem('quickstor_custom_sections'),
-                // Theme configurations
-                quickstor_themes: localStorage.getItem('quickstor_themes'),
-                // Local sections (if used)
-                quickstor_sections: localStorage.getItem('quickstor_sections')
+            // 2. Gather CURRENT Application State (In-Memory + Unsaved Changes)
+            // This is the "Staging" state we want to preserve
+            const appState = {
+                pages,
+                navbar,
+                footer,
+                theme: activeTheme,
+                savedThemes,
+                customSections
             };
 
-            // 3. Create Backup Bundle
+            // 3. Gather Settings (Local Configuration)
+            const settings = {
+                // AI Configuration
+                aiConfig: localStorage.getItem('quickstor_ai_config'),
+                // Custom System Prompt
+                systemPrompt: localStorage.getItem('quickstor_system_prompt_custom'),
+                // Custom Filling Prompt
+                fillingPrompt: localStorage.getItem('quickstor_content_filling_prompt'),
+                // Cached prompts
+                prompts: localStorage.getItem('quickstor_prompts'),
+            };
+
+            // 4. Create Comprehensive Backup Bundle
             const backup = {
-                version: '2.0',
+                version: '3.0',
                 timestamp: new Date().toISOString(),
                 source: 'QuickStor Admin',
-                backendData,
-                localConfig
+                // The critical part: explicitly separate app state from backend dump
+                appState,
+                settings,
+                // Include full backend dump for safety (contains Live site)
+                backendData
             };
 
-            // 4. Trigger Download
+            // 5. Trigger Download
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", `quickstor-backup-${new Date().toISOString().slice(0, 10)}.json`);
+            downloadAnchorNode.setAttribute("download", `quickstor-full-backup-${new Date().toISOString().slice(0, 10)}.json`);
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
 
-            setStatus({ type: 'success', message: 'Backup downloaded successfully!' });
+            setStatus({ type: 'success', message: 'Full backup (including unsaved changes) downloaded!' });
         } catch (error) {
             console.error('Export failed:', error);
             setStatus({ type: 'error', message: 'Failed to create backup: ' + error.message });
@@ -160,7 +178,7 @@ const Settings = () => {
         const file = event.target.files[0];
         if (!file) return;
 
-        if (!confirm("WARNING: Restoring a backup will OVERWRITE all current settings, content, and themes. This cannot be undone.\n\nAre you sure you want to proceed?")) {
+        if (!confirm("WARNING: Restoring a backup will REPLACE your current Staging environment and Local Settings.\n\nYour LIVE site will remain untouched, but your current workspace will be overwritten.\n\nProceed?")) {
             event.target.value = '';
             return;
         }
@@ -172,31 +190,101 @@ const Settings = () => {
             const text = await file.text();
             const backup = JSON.parse(text);
 
-            // Validation simple check
-            if (!backup.version || !backup.backendData || !backup.localConfig) {
-                throw new Error("Invalid backup file format");
+            // Validation
+            if (!backup.backendData) {
+                throw new Error("Invalid backup format: missing backend data");
             }
 
-            // 1. Restore Local Storage
-            Object.entries(backup.localConfig).forEach(([key, value]) => {
-                if (value) localStorage.setItem(key, value);
-            });
+            // --- 1. Restore Settings (AI, Prompts, etc.) ---
+            if (backup.settings) {
+                if (backup.settings.aiConfig) localStorage.setItem('quickstor_ai_config', backup.settings.aiConfig);
+                if (backup.settings.systemPrompt) localStorage.setItem('quickstor_system_prompt_custom', backup.settings.systemPrompt);
+                if (backup.settings.fillingPrompt) localStorage.setItem('quickstor_content_filling_prompt', backup.settings.fillingPrompt);
+                if (backup.settings.prompts) localStorage.setItem('quickstor_prompts', backup.settings.prompts);
 
-            // 2. Restore Backend Data
+                // Backward compatibility for v2.0 backups
+            } else if (backup.localConfig) {
+                Object.entries(backup.localConfig).forEach(([key, value]) => {
+                    // Only restore settings keys, ignore content keys (quickstor_pages etc) as we handle them globally
+                    if (['quickstor_ai_config', 'quickstor_system_prompt_custom', 'quickstor_content_filling_prompt', 'quickstor_prompts'].includes(key)) {
+                        if (value) localStorage.setItem(key, value);
+                    }
+                });
+            }
+
+            // --- 2. Construct New Backend Data ---
+            // We take the backup's backend data as a base
+            const newBackendData = { ...backup.backendData };
+
+            // DETERMINE STAGING STATE TO RESTORE
+            let stagingStateToRestore = null;
+
+            if (backup.appState) {
+                // v3.0: Use the explicit app state captured during export
+                stagingStateToRestore = backup.appState;
+                console.log('Restoring from v3.0 AppState');
+            } else if (backup.localConfig) {
+                // v2.0 Fallback: Try to reconstruct from localConfig in backup
+                stagingStateToRestore = {
+                    pages: backup.localConfig.quickstor_pages ? JSON.parse(backup.localConfig.quickstor_pages) : null,
+                    navbar: backup.localConfig.quickstor_navbar ? JSON.parse(backup.localConfig.quickstor_navbar) : null,
+                    footer: backup.localConfig.quickstor_footer ? JSON.parse(backup.localConfig.quickstor_footer) : null,
+                    savedThemes: backup.localConfig.quickstor_savedThemes ? JSON.parse(backup.localConfig.quickstor_savedThemes) : null,
+                    theme: backup.localConfig.quickstor_activeTheme ? JSON.parse(backup.localConfig.quickstor_activeTheme) : null,
+                    customSections: backup.localConfig.quickstor_custom_sections ? JSON.parse(backup.localConfig.quickstor_custom_sections) : null
+                };
+                console.log('Restoring from v2.0 LocalConfig');
+            }
+
+            // --- 3. MERGE into Staging ---
+            // We enforce that the "Staging" site becomes exactly what was in our backup (or working state)
+            if (stagingStateToRestore) {
+                // Ensure the staging node exists
+                if (!newBackendData['sites/quickstor-staging']) {
+                    newBackendData['sites/quickstor-staging'] = {};
+                }
+
+                // Merge/Overwrite Staging
+                // This ensures that when the app reloads, it fetches THIS data as the "Server Truth"
+                // which matches what was in our memory when we backed up.
+                newBackendData['sites/quickstor-staging'] = {
+                    ...newBackendData['sites/quickstor-staging'],
+                    ...stagingStateToRestore,
+                    // Ensure we update version/timestamp so the client knows it changed
+                    version: `RESTORED-${Date.now()}`,
+                    lastUpdated: new Date().toISOString()
+                };
+            }
+
+            // --- 4. Push to Backend ---
             const response = await fetch('http://localhost:3000/api/data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(backup.backendData)
+                body: JSON.stringify(newBackendData)
             });
 
             if (!response.ok) throw new Error('Failed to restore backend data');
+
+            // --- 5. Clean Clean LocalStorage Content Items ---
+            // Since we just updated the SERVER with our desired state, we can clear the 
+            // local overrides to force the app to re-sync from the "new" server state.
+            // This prevents "stale" localStorage from conflicting with our restoration.
+            const contentKeys = [
+                'quickstor_pages',
+                'quickstor_navbar',
+                'quickstor_footer',
+                'quickstor_activeTheme',
+                'quickstor_savedThemes',
+                'quickstor_custom_sections'
+            ];
+            contentKeys.forEach(key => localStorage.removeItem(key));
 
             setStatus({ type: 'success', message: 'System restored successfully! Reloading...' });
 
             // Reload to apply changes
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 1000);
 
         } catch (error) {
             console.error('Import failed:', error);

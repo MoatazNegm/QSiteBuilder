@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import StyleControls from '../../components/ui/StyleControls';
 import { Trash2, Plus, Settings2 } from 'lucide-react';
 import ImageUploadField from '../../components/ui/ImageUploadField';
+import AIContentFiller from '../../components/ui/AIContentFiller';
 
 const PropertyPanel = () => {
   const { sections, selectedSectionId, updateSection, navbar, updateNavbar, footer, updateFooter, pages } = useContentStore();
@@ -374,9 +375,22 @@ const PropertyPanel = () => {
 
     switch (type) {
       case 'HERO':
+        // Handler for AI-generated content
+        const applyHeroContent = (generatedData) => {
+          updateSection(selectedSection.id, {
+            ...content,
+            ...generatedData
+          });
+        };
+
         return (
           <div className="space-y-6">
-
+            {/* AI Content Filler */}
+            <AIContentFiller
+              sectionType={type}
+              currentContent={content}
+              onApply={applyHeroContent}
+            />
 
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Manual Edit</h4>
@@ -448,9 +462,22 @@ const PropertyPanel = () => {
         );
 
       case 'FEATURE_GRID':
+        // Handler for AI-generated features
+        const applyFeatureGridContent = (generatedData) => {
+          updateSection(selectedSection.id, {
+            ...content,
+            features: generatedData
+          });
+        };
+
         return (
           <div className="space-y-6">
-
+            {/* AI Content Filler */}
+            <AIContentFiller
+              sectionType={type}
+              currentContent={content}
+              onApply={applyFeatureGridContent}
+            />
 
             {/* Global Styles */}
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
@@ -473,8 +500,23 @@ const PropertyPanel = () => {
         );
 
       case 'COMPARISON_GRAPH':
+        // Handler for AI-generated graph data
+        const applyGraphContent = (generatedData) => {
+          updateSection(selectedSection.id, {
+            ...content,
+            data: generatedData
+          });
+        };
+
         return (
           <div className="space-y-6">
+            {/* AI Content Filler */}
+            <AIContentFiller
+              sectionType={type}
+              currentContent={content}
+              onApply={applyGraphContent}
+            />
+
             {/* Graph Data Import Area */}
             <div className="p-4 bg-gradient-to-br from-gray-50 to-blue-50 border border-gray-200 rounded-lg space-y-3">
               <div className="flex items-center justify-between">
@@ -483,7 +525,6 @@ const PropertyPanel = () => {
                   {(content.data || []).length} Entries
                 </span>
               </div>
-
 
 
               {/* Mini Preview of Data */}
@@ -542,9 +583,22 @@ const PropertyPanel = () => {
           });
         };
 
+        // Handler for AI-generated content
+        const applyCustomContent = (generatedData) => {
+          updateSection(selectedSection.id, {
+            ...content,
+            content: { ...content.content, ...generatedData }
+          });
+        };
+
         return (
           <div className="space-y-6">
-
+            {/* AI Content Filler */}
+            <AIContentFiller
+              sectionType={type}
+              currentContent={content}
+              onApply={applyCustomContent}
+            />
 
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">Content Fields</h4>
