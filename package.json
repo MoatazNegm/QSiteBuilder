@@ -5,6 +5,8 @@
     "scripts": {
         "start": "cd quickstor-backend && npm start",
         "install-all": "npm install && cd quickstor-backend && npm install && cd ../quickstor-admin && npm install && cd ../quickstor-frontend && npm install",
+        "install-subs": "cd quickstor-backend && npm install && cd ../quickstor-admin && npm install && cd ../quickstor-frontend && npm install",
+        "postinstall": "npm run install-subs",
         "build": "node build-all.js"
     },
     "engines": {
