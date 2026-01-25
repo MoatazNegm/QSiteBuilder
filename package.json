@@ -1,0 +1,16 @@
+{
+    "name": "quickstor-root",
+    "version": "1.0.0",
+    "description": "QuickStor Root Project for Render Deployment",
+    "scripts": {
+        "start": "cd quickstor-backend && npm start",
+        "install-all": "npm install && cd quickstor-backend && npm install && cd ../quickstor-admin && npm install && cd ../quickstor-frontend && npm install",
+        "build": "node build-all.js"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "fs-extra": "^11.2.0"
+    }
+}

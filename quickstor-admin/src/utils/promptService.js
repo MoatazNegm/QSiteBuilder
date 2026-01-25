@@ -36,7 +36,9 @@ class PromptService {
                 // Note: In production, you might want to always fetch to check for updates,
                 // but for now we prioritize user local storage if it exists.
                 console.log('Fetching default prompts from /prompts.json...');
-                const response = await fetch('/prompts.json');
+                // Use BASE_URL to handle subpath deployment (/adminportal/)
+                const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+                const response = await fetch(`${baseUrl}prompts.json`);
                 if (!response.ok) throw new Error('Failed to fetch default prompts');
 
                 const defaults = await response.json();

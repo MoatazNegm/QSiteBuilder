@@ -15,6 +15,32 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// --- STATIC FILES SERVING (Render Deployment) ---
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// 1. Admin Portal -> /adminportal
+app.use('/adminportal', express.static(path.join(PUBLIC_DIR, 'adminportal')));
+app.get('/adminportal/*', (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'adminportal', 'index.html'));
+});
+
+// 2. Staging Site -> /staging
+app.use('/staging', express.static(path.join(PUBLIC_DIR, 'staging')));
+app.get('/staging/*', (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'staging', 'index.html'));
+});
+
+// Shared Assets (Logo, etc)
+app.use('/logo.png', (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'logo.png'));
+});
+
+// 3. Live Site -> / (Root)
+app.use('/', express.static(path.join(PUBLIC_DIR, 'live')));
+// Note: Catch-all for live site must come AFTER API routes to avoid intercepting them
+// We will place it at the very bottom of the file
+
+
 // --- Proxy for OpenAI/Compatible APIs (Fixes CORS) ---
 app.post('/api/proxy/openai', async (req, res) => {
     try {

@@ -23,9 +23,12 @@ function App() {
     promptService.init();
   }, []);
 
+  // Determine basename (for serving under /adminportal)
+  const basename = import.meta.env.BASE_URL || '/';
+
   return (
     <ContentProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename === '/' ? undefined : basename}>
         <Routes>
           {/* Public Routes (Login) */}
           <Route element={<AuthLayout />}>

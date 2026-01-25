@@ -177,7 +177,7 @@ SUMMARY:`;
 // --- OpenAI Proxy Helper ---
 async function callOpenAIProxy(url, apiKey, body) {
     try {
-        const response = await fetch('http://localhost:3000/api/proxy/openai', {
+        const response = await fetch('/api/proxy/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url, apiKey, body })
@@ -218,7 +218,7 @@ async function callOpenAIStream(prompt, onChunk, config) {
     const url = `${baseUrl}/chat/completions`;
 
     try {
-        const response = await fetch('http://localhost:3000/api/proxy/openai', {
+        const response = await fetch('/api/proxy/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -279,7 +279,8 @@ async function callOpenAIWithHistoryStream(messages, onChunk, config) {
     }));
 
     try {
-        const response = await fetch('http://localhost:3000/api/proxy/openai', {
+        // Use proxy to avoid CORS
+        const response = await fetch('/api/proxy/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

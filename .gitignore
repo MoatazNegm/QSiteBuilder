@@ -9,6 +9,8 @@ coverage
 # Production
 build
 dist
+quickstor-backend/public
+!quickstor-backend/public/.gitkeep
 
 # Misc
 .DS_Store

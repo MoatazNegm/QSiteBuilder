@@ -113,7 +113,7 @@ const Settings = () => {
 
         try {
             // 1. Fetch Backend Data (for Live/legacy data)
-            const response = await fetch('http://localhost:3000/api/data');
+            const response = await fetch('/api/data');
             if (!response.ok) throw new Error('Failed to fetch site data');
             const backendData = await response.json();
 
@@ -257,7 +257,7 @@ const Settings = () => {
             }
 
             // --- 4. Push to Backend ---
-            const response = await fetch('http://localhost:3000/api/data', {
+            const response = await fetch('/api/data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newBackendData)
