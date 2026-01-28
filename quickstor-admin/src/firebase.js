@@ -67,14 +67,21 @@ export const setDoc = async (docRef, data, options) => {
     }
 };
 
-// Admin doesn't typically strictly need real-time listener for its own edits, 
-// but we can mock it by just returning the data immediately once.
+// Simulate real-time updates with polling
 export const onSnapshot = (docRef, callback) => {
     // Initial fetch
-    getDoc(docRef).then(snap => callback(snap));
+    const fetchData = async () => {
+        const snap = await getDoc(docRef);
+        callback(snap);
+    };
 
-    // No-op unsubscribe for now, or could implement polling
-    return () => { };
+    fetchData();
+
+    // Poll every 2 seconds to check for changes
+    const intervalId = setInterval(fetchData, 2000);
+
+    // Return unsubscribe function
+    return () => clearInterval(intervalId);
 };
 
 export const initializeApp = () => app;

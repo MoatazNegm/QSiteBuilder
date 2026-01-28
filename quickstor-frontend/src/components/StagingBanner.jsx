@@ -12,7 +12,10 @@ export default function StagingBanner() {
     const [processing, setProcessing] = useState(false);
 
     // If not staging, don't render anything
-    if (!IS_STAGING) return null;
+    if (!IS_STAGING) {
+        console.log("[StagingBanner] Hidden. IS_STAGING:", IS_STAGING, "DocID:", SITE_DOC_ID);
+        return null;
+    }
 
     useEffect(() => {
         // Listen to Staging

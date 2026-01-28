@@ -1,6 +1,6 @@
 // Adapter for QuickStor Backend (replaces Firebase)
 
-const BACKEND_URL = 'http://localhost:3000/api/data';
+const BACKEND_URL = '/api/data';
 
 // Mock objects
 export const app = {};
