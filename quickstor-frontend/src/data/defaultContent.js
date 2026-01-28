@@ -1,12 +1,12 @@
 // This file acts as your "database" for now. 
 // Later, you will fetch this JSON from your API.
 
-import logo from '../assets/Quickstor logo.png';
+// import logo from '../assets/Quickstor logo.png';
 
 export const defaultContent = {
   // Global/Fixed elements (Layout)
   navbar: {
-    logo: logo,
+    logo: 'QuickStor',
     links: [
       { label: 'PERFORMANCE', href: '#performance' },
       { label: 'ZFS TECHNOLOGY', href: '#zfs' },
@@ -15,7 +15,7 @@ export const defaultContent = {
     ],
     ctaText: 'BUILD SERVER'
   },
-  
+
   // Dynamic Sections (Reorderable)
   sections: [
     {

@@ -47,6 +47,11 @@ app.post('/api/proxy/openai', async (req, res) => {
         const { url, apiKey, body } = req.body;
 
         if (!url || !apiKey || !body) {
+            console.error('[Proxy] Bad Request - Missing params:', {
+                url: url ? 'Present' : 'MISSING',
+                apiKey: apiKey ? 'Present' : 'MISSING',
+                body: body ? 'Present' : 'MISSING'
+            });
             return res.status(400).json({ error: 'Missing url, apiKey, or body' });
         }
 

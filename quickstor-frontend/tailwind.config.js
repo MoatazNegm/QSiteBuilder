@@ -20,5 +20,12 @@ export default {
       }
     },
   },
+  safelist: [
+    {
+      pattern: /^(bg|text|border)-(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{1,3}$/,
+      variants: ['hover', 'focus'],
+    },
+    'w-full', 'h-2', 'h-full', 'w-screen' // Explicitly safe common layout utils
+  ],
   plugins: [],
 }

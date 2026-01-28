@@ -234,16 +234,22 @@ export const ContentProvider = ({ children }) => {
       }
       const data = liveSnap.data();
 
-      // 2. Update local state to match live
+      // 2. Update local state to match live, BUT preserve Custom Sections (Library)
       if (data.navbar) setNavbar(data.navbar);
       if (data.footer) setFooter(data.footer);
       if (data.pages) setPages(data.pages);
       if (data.theme) setActiveTheme(data.theme);
       if (data.savedThemes) setSavedThemes(data.savedThemes);
-      if (data.customSections) setCustomSections(data.customSections);
+      // Preserve current customSections instead of reverting to Live
+      // if (data.customSections) setCustomSections(data.customSections); 
 
-      // 3. Update staging in Firestore to match live
-      await setDoc(doc(db, 'sites', 'quickstor-staging'), data);
+      const revertedData = {
+        ...data,
+        customSections: customSections // Keep existing library additions
+      };
+
+      // 3. Update staging in Firestore to match live (with preserved sections)
+      await setDoc(doc(db, 'sites', 'quickstor-staging'), revertedData);
 
       // Update snapshots
       setStagingSnapshot(data);

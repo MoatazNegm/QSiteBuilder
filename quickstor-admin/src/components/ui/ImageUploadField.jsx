@@ -3,7 +3,7 @@ import { Upload, Image as ImageIcon, X, Link } from 'lucide-react';
 import { Button } from './Button';
 import { Input } from './Input';
 
-const ImageUploadField = ({ value, onChange, placeholder }) => {
+const ImageUploadField = ({ value, onChange, placeholder, acceptedFileTypes }) => {
     const fileInputRef = useRef(null);
     const [isDragOver, setIsDragOver] = useState(false);
 
@@ -18,6 +18,13 @@ const ImageUploadField = ({ value, onChange, placeholder }) => {
         if (file.size > 2 * 1024 * 1024) {
             alert("Image is too large (max 2MB)");
             return;
+        }
+
+        if (acceptedFileTypes && acceptedFileTypes.length > 0) {
+            if (!acceptedFileTypes.includes(file.type)) {
+                alert(`Invalid file type. Accepted types: ${acceptedFileTypes.map(t => t.split('/')[1].toUpperCase()).join(', ')}`);
+                return;
+            }
         }
 
         const reader = new FileReader();
@@ -68,7 +75,7 @@ const ImageUploadField = ({ value, onChange, placeholder }) => {
                     type="file"
                     ref={fileInputRef}
                     className="hidden"
-                    accept="image/*"
+                    accept={acceptedFileTypes ? acceptedFileTypes.join(',') : "image/*"}
                     onChange={handleFileSelect}
                 />
                 <Button
@@ -118,7 +125,7 @@ const ImageUploadField = ({ value, onChange, placeholder }) => {
                         onClick={() => fileInputRef.current?.click()}
                     >
                         <ImageIcon size={20} className="mb-1 opacity-50" />
-                        <span className="text-xs">Drop or paste image</span>
+                        <span className="text-xs">Drop or paste {acceptedFileTypes && acceptedFileTypes.includes('image/png') && acceptedFileTypes.length === 1 ? 'PNG' : 'image'}</span>
                     </div>
                 )}
             </div>

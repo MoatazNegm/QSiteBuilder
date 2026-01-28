@@ -45,11 +45,12 @@ const PropertyPanel = () => {
     return (
       <div className="space-y-6">
         <div className="space-y-2">
-          <Label>Logo Text / Path</Label>
-          <Input
+          <Label>Logo Image</Label>
+          <ImageUploadField
             value={navbar.logo || ''}
-            onChange={(e) => updateNavbar({ logo: e.target.value })}
-            className="text-gray-900 bg-white"
+            onChange={(val) => updateNavbar({ logo: val })}
+            placeholder="Upload PNG Logo..."
+            acceptedFileTypes={['image/png']}
           />
         </div>
         <div className="space-y-2">

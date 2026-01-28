@@ -444,7 +444,21 @@ export const AIService = {
             // Handle messages with attachments
             if (msg.attachments?.length > 0) {
                 if (isOpenAI) {
-                    // OpenAI Format
+                    // DeepSeek is text-only (usually), so we must NOT send image_url
+                    const isDeepSeek = (config.openai.baseUrl || '').includes('deepseek') || (config.openai.model || '').includes('deepseek');
+
+                    if (isDeepSeek) {
+                        // For DeepSeek, just send text.
+                        // If there were images, we effectively drop them but maybe warn in console
+                        const textContent = msg.text || '';
+                        const hasImages = msg.attachments.some(f => f.type.startsWith('image/'));
+                        return {
+                            role: msg.role,
+                            content: hasImages ? `${textContent}\n\n[System Note: Image attachments were omitted because DeepSeek is text-only]` : textContent
+                        };
+                    }
+
+                    // Standard OpenAI / Vision Compatible
                     const content = [{ type: 'text', text: msg.text || '' }];
                     msg.attachments.forEach(file => {
                         if (file.type.startsWith('image/')) {
@@ -454,7 +468,7 @@ export const AIService = {
                             });
                         }
                     });
-                    return { role: msg.role, content }; // OpenAI uses 'content' array
+                    return { role: msg.role, content };
                 } else {
                     // Gemini Format
                     const parts = [{ text: msg.text || '' }];

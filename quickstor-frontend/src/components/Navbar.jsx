@@ -6,6 +6,24 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
 
   const navLinks = links || [];
 
+  const isExternal = (url) => url.startsWith('http') || url.startsWith('mailto:');
+
+  // Helper to ensure links respect the deployment base (e.g. /staging)
+  // without relying on Router context (which crashes Admin Preview)
+  const getHref = (path) => {
+    if (isExternal(path) || path.startsWith('#')) return path;
+
+    // Get basename from env, default to root
+    const base = import.meta.env.BASE_URL || '/';
+    // Remove trailing slash from base if present to avoid double slashes
+    const cleanBase = base === '/' ? '' : base.replace(/\/$/, '');
+
+    // clean path
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+
+    return `${cleanBase}${cleanPath}`;
+  };
+
   return (
     <nav
       className={`fixed w-full z-50 border-b border-gray-900 bg-black/95 backdrop-blur-md ${className || ''}`}
@@ -15,7 +33,7 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
 
         {/* Logo Area */}
         <a
-          href="/"
+          href={getHref('/')}
           onClick={(e) => {
             if (onLogoClick) {
               e.preventDefault();
@@ -38,8 +56,10 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
           {navLinks.map((item) => (
             <a
               key={item.label}
-              href={item.href}
+              href={getHref(item.href)}
               className="hover:text-blue-400 transition-colors relative group py-2"
+              target={isExternal(item.href) ? "_blank" : undefined}
+              rel={isExternal(item.href) ? "noopener noreferrer" : undefined}
             >
               {item.label}
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 transition-all group-hover:w-full"></span>
@@ -70,9 +90,11 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
           {navLinks.map((item) => (
             <a
               key={item.label}
-              href={item.href}
+              href={getHref(item.href)}
               className="block w-full text-center py-2 text-gray-400 hover:text-blue-400 font-bold hover:bg-gray-900 rounded transition-colors"
               onClick={() => setIsOpen(false)}
+              target={isExternal(item.href) ? "_blank" : undefined}
+              rel={isExternal(item.href) ? "noopener noreferrer" : undefined}
             >
               {item.label}
             </a>
