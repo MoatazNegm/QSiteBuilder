@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
-const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
+const Navbar = ({ logo, logoSize, links, ctaText, onLogoClick, className, style }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = links || [];
@@ -29,7 +29,7 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
       className={`fixed w-full z-50 border-b border-gray-900 bg-black/95 backdrop-blur-md ${className || ''}`}
       style={style}
     >
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-12 h-16 md:h-20 flex items-center justify-between">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-12 h-20 md:h-28 flex items-center justify-between">
 
         {/* Logo Area */}
         <a
@@ -46,7 +46,8 @@ const Navbar = ({ logo, links, ctaText, onLogoClick, className, style }) => {
             <img
               src={logo}
               alt="QuickStor Systems"
-              className="h-8 md:h-10 w-auto object-contain rounded-sm"
+              className="h-16 md:h-20 w-auto object-contain rounded-sm transition-transform origin-left"
+              style={{ transform: `scale(${(logoSize || 100) / 100})` }}
             />
           )}
         </a>

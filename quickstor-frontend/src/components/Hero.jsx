@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Activity } from 'lucide-react';
 import { IconMapper } from '../utils/IconMapper';
+import InlineText from './ui/InlineText';
 
 const Hero = ({ badge, title, subtitle, primaryCta, secondaryCta, trustIndicators, serverStatus, styles = {} }) => {
   return (
@@ -34,28 +35,36 @@ const Hero = ({ badge, title, subtitle, primaryCta, secondaryCta, trustIndicator
           )}
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold text-white leading-[1.1] mb-6 tracking-tight">
-            <span style={styles?.titleLine1}>{title?.line1}</span> <br className="hidden sm:block" />
-            <span
+            <InlineText
+              as="span"
+              field="title.line1"
+              value={title?.line1}
+              style={styles?.titleLine1}
+            />
+            <br className="hidden sm:block" />
+            <InlineText
+              as="span"
+              field="title.highlight"
+              value={title?.highlight}
               style={styles?.titleHighlight}
               className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-400"
-            >
-              {title?.highlight}
-            </span>
+            />
           </h1>
 
-          <p
+          <InlineText
+            as="p"
+            field="subtitle"
+            value={subtitle}
             style={styles?.subtitle}
             className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 max-w-lg mx-auto lg:mx-0 leading-relaxed lg:border-l-2 border-blue-900 lg:pl-6 border-l-0"
-          >
-            {subtitle}
-          </p>
+          />
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
             <button
               style={styles?.primaryCta}
               className="bg-white text-black font-bold py-3 md:py-4 px-6 md:px-8 rounded-sm hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 group text-sm md:text-base"
             >
-              {primaryCta}
+              <InlineText field="primaryCta" value={primaryCta} />
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <button

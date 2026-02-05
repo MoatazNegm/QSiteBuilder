@@ -1,16 +1,25 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Zap, Layers } from 'lucide-react';
+import InlineText from './ui/InlineText';
 
 const ComparisonGraph = ({ title, description, data }) => {
   return (
     <section id="performance" className="py-16 md:py-24 bg-[#080808] border-y border-gray-900 relative">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-12">
         <div className="mb-12 md:mb-16 md:w-2/3 mx-auto md:mx-0 text-center md:text-left">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6">{title}</h2>
-          <p className="text-gray-400 text-base md:text-lg leading-relaxed max-w-3xl">
-            {description}
-          </p>
+          <InlineText
+            as="h2"
+            field="title"
+            value={title}
+            className="text-3xl md:text-4xl font-bold text-white mb-4 md:mb-6"
+          />
+          <InlineText
+            as="p"
+            field="description"
+            value={description}
+            className="text-gray-400 text-base md:text-lg leading-relaxed max-w-3xl"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">

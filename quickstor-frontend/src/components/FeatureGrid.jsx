@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconMapper } from '../utils/IconMapper';
+import InlineText from './ui/InlineText';
 
 const FeatureGrid = ({ features, styles = {} }) => (
   <section id="zfs" className="py-16 md:py-24 bg-[#050505] px-4 sm:px-6 lg:px-12">
@@ -15,18 +16,20 @@ const FeatureGrid = ({ features, styles = {} }) => (
                 size={24}
               />
             </div>
-            <h3
+            <InlineText
+              as="h3"
+              field={`features.${index}.title`}
+              value={feature.title}
               style={styles?.cardTitle}
               className="text-lg md:text-xl font-bold text-white mb-3"
-            >
-              {feature.title}
-            </h3>
-            <p
+            />
+            <InlineText
+              as="p"
+              field={`features.${index}.description`}
+              value={feature.description}
               style={styles?.cardDescription}
               className="text-gray-400 text-sm leading-relaxed"
-            >
-              {feature.description}
-            </p>
+            />
           </div>
         ))}
 

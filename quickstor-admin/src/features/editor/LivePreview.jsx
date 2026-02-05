@@ -10,6 +10,7 @@ import ComparisonGraph from '../../../../quickstor-frontend/src/components/Compa
 import FeatureGrid from '../../../../quickstor-frontend/src/components/FeatureGrid';
 import Navbar from '../../../../quickstor-frontend/src/components/Navbar';
 import Footer from '../../../../quickstor-frontend/src/components/Footer';
+import { SectionEditorProvider } from '../../../../quickstor-frontend/src/contexts/SectionEditorContext';
 import CustomHTMLSection from '../../components/CustomHTMLSection';
 
 // In case the frontend doesn't export a SectionRenderer, we map it locally
@@ -20,8 +21,34 @@ const COMPONENT_MAP = {
   'CUSTOM_HTML': CustomHTMLSection,
 };
 
+import VisualSectionWrapper from './VisualSectionWrapper';
+
 const LivePreview = () => {
-  const { sections, navbar, footer, setActivePageId } = useContentStore();
+  const {
+    sections,
+    navbar,
+    footer,
+    setActivePageId,
+    selectedSectionId,
+    setSelectedSectionId,
+    deleteSection,
+    reorderSections,
+    updateSection
+  } = useContentStore();
+
+  const handleMoveUp = (index) => {
+    if (index === 0) return;
+    const newSections = [...sections];
+    [newSections[index - 1], newSections[index]] = [newSections[index], newSections[index - 1]];
+    reorderSections(newSections);
+  };
+
+  const handleMoveDown = (index) => {
+    if (index === sections.length - 1) return;
+    const newSections = [...sections];
+    [newSections[index + 1], newSections[index]] = [newSections[index], newSections[index + 1]];
+    reorderSections(newSections);
+  };
 
   return (
     <div className="flex-1 bg-gray-100 flex flex-col h-full overflow-hidden relative">
@@ -44,12 +71,32 @@ const LivePreview = () => {
             />
 
             <div className="flex flex-col">
-              {sections.map((section) => {
+              {sections.map((section, index) => {
                 const Component = COMPONENT_MAP[section.type];
                 if (!Component) return <div key={section.id} className="p-4 text-red-500">Unknown Component: {section.type}</div>;
 
-                // Pass the content dynamically to the component
-                return <Component key={section.id} {...section.content} />;
+                return (
+                  <VisualSectionWrapper
+                    key={section.id}
+                    isSelected={selectedSectionId === section.id}
+                    onSelect={() => setSelectedSectionId(section.id)}
+                    onDelete={() => deleteSection(section.id)}
+                    onMoveUp={() => handleMoveUp(index)}
+                    onMoveDown={() => handleMoveDown(index)}
+                    isFirst={index === 0}
+                    isLast={index === sections.length - 1}
+                    label={section.type}
+                  >
+                    <SectionEditorProvider
+                      sectionId={section.id}
+                      content={section.content}
+                      onUpdate={updateSection} // Function from useContentStore
+                      isEditable={true}
+                    >
+                      <Component {...section.content} />
+                    </SectionEditorProvider>
+                  </VisualSectionWrapper>
+                );
               })}
             </div>
 

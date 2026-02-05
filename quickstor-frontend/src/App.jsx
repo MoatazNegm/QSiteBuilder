@@ -58,7 +58,7 @@ function PageContent({ pages, navbar, footer }) {
 
       {/* Dynamic Sections Loop - Show 404 message if no page found and no fallback */}
       {/* Dynamic Sections Loop */}
-      <div className={IS_STAGING ? 'pt-32 md:pt-40' : 'pt-16 md:pt-20'}>
+      <div className={IS_STAGING ? 'pt-36 md:pt-48' : 'pt-20 md:pt-28'}>
         {pageToRender ? (
           <SectionRenderer sections={pageToRender.sections || []} />
         ) : (

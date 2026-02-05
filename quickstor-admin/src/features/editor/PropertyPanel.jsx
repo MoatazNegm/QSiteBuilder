@@ -54,6 +54,20 @@ const PropertyPanel = () => {
           />
         </div>
         <div className="space-y-2">
+          <Label>Logo Size (%)</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min="10"
+              max="500"
+              value={navbar.logoSize || 100}
+              onChange={(e) => updateNavbar({ logoSize: parseInt(e.target.value) || 100 })}
+              className="text-gray-900 bg-white"
+            />
+            <span className="text-xs text-gray-500">%</span>
+          </div>
+        </div>
+        <div className="space-y-2">
           <Label>CTA Button Text</Label>
           <Input
             value={navbar.ctaText || ''}
