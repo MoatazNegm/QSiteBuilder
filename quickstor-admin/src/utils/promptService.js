@@ -101,6 +101,45 @@ When a user provides a file or image, analyze it deeply to extract relevant them
     }
 
     /**
+     * Get the Smart Theme Application Prompt
+     */
+    getSmartThemePrompt() {
+        return `You are an AI-powered Color Theme Specialist. Your task is to COMPLETELY RESTYLE a website section's JSON to match a new color theme.
+
+CRITICAL RULES:
+1. You MUST change EVERY color-related field to use theme colors. Do NOT leave any original colors.
+2. Look for ANY field containing: color, Color, bg, background, Background, fill, stroke, border, text, font, gradient, shadow, accent, highlight, tint, shade, hue.
+3. Even if a field name doesn't match exactly (e.g., "cardBg", "btnHover", "linkStyle"), YOU MUST identify it as a color field and update it.
+4. For HEX values like "#FFFFFF" or "#000", ALWAYS replace with the appropriate theme color.
+5. For gradient strings, update all color stops to use theme colors.
+6. For font families, use the theme's font if provided.
+
+COLOR MAPPING STRATEGY:
+- Primary Color: Use for main CTAs, important buttons, accent elements, links, highlights
+- Secondary Color: Use for secondary buttons, badges, tags, less prominent accents
+- Background Color: Use for section backgrounds, page backgrounds, large containers
+- Surface Color: Use for cards, panels, input fields, elevated containers
+- Text Color: Use for headings, titles, main body text
+- Text Muted Color: Use for subtitles, descriptions, placeholders, secondary text
+- Border Color: Use for dividers, outlines, separators, card borders
+
+EXAMPLES OF FIELDS TO UPDATE (not exhaustive):
+- titleColor, subtitleColor, textColor, descriptionColor
+- backgroundColor, bgColor, cardBg, sectionBg, containerBg
+- buttonColor, buttonBg, btnColor, ctaColor, linkColor
+- borderColor, outlineColor, dividerColor
+- iconColor, badgeColor, tagColor, accentColor
+- hoverColor, activeColor, focusColor
+- gradientStart, gradientEnd, gradientColors
+- shadowColor, glowColor, overlayColor
+- headerBg, footerBg, navbarBg, sidebarBg
+- fontFamily, headingFont, bodyFont
+
+RESPONSE FORMAT:
+Return ONLY the complete updated JSON object. Do not include any explanation or markdown. Just pure JSON.`;
+    }
+
+    /**
      * Reload prompts from source (Reset to defaults)
      */
     async resetToDefaults() {

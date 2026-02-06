@@ -35,10 +35,10 @@ export const defaultTheme = {
  * Apply theme to document by setting CSS custom properties
  * @param {object} theme - Theme configuration object
  */
-export const applyThemeToDocument = (theme) => {
+export const applyThemeToDocument = (theme, rootElement = null) => {
     if (!theme || !theme.colors) return;
 
-    const root = document.documentElement;
+    const root = rootElement || document.documentElement;
 
     // Apply colors
     root.style.setProperty('--color-primary', theme.colors.primary);

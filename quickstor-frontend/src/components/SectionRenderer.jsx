@@ -1,4 +1,5 @@
 import React from 'react';
+import RenderSectionWrapper from './RenderSectionWrapper';
 import Hero from './Hero';
 import ComparisonGraph from './ComparisonGraph';
 import FeatureGrid from './FeatureGrid';
@@ -30,7 +31,14 @@ export const SectionRenderer = ({ sections }) => {
 
         // Pass the content object as props to the specific component
         // Use section.id as the React key
-        return <Component key={section.id} {...section.content} />;
+        return (
+          <RenderSectionWrapper
+            key={section.id}
+            styles={section.content?.styles}
+          >
+            <Component {...section.content} />
+          </RenderSectionWrapper>
+        );
       })}
     </>
   );

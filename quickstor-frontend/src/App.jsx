@@ -57,10 +57,13 @@ function PageContent({ pages, navbar, footer }) {
       <Navbar {...navbar} className={IS_STAGING ? 'top-12' : ''} />
 
       {/* Dynamic Sections Loop - Show 404 message if no page found and no fallback */}
-      {/* Dynamic Sections Loop */}
       <div className={IS_STAGING ? 'pt-36 md:pt-48' : 'pt-20 md:pt-28'}>
         {pageToRender ? (
-          <SectionRenderer sections={pageToRender.sections || []} />
+          <main className="flex-grow flex flex-col">
+            <div className="flex flex-wrap items-start content-start w-full">
+              <SectionRenderer sections={pageToRender.sections || []} />
+            </div>
+          </main>
         ) : (
           <div className="flex items-center justify-center min-h-[50vh] text-gray-400">
             <p>Page not found</p>

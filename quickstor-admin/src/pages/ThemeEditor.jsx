@@ -3,6 +3,7 @@ import { useContentStore } from '../hooks/useContentStore';
 import { Palette, Type, Image, Sparkles, Save, Trash2, Check } from 'lucide-react';
 import { AIService, getProviderInfo } from '../utils/aiService';
 import { promptService } from '../utils/promptService';
+import { SmartThemeService } from '../utils/smartThemeService';
 
 const ColorPicker = ({ label, value, onChange }) => (
     <div className="flex items-center justify-between py-2">
@@ -59,12 +60,22 @@ export default function ThemeEditor() {
         updateTheme,
         saveThemeToLibrary,
         deleteThemeFromLibrary,
-        applyTheme
+        applyTheme,
+        pages,
+        updateSection,
+        updatePage,
+        navbar,
+        updateNavbar,
+        footer,
+        updateFooter
     } = useContentStore();
 
     const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [saveThemeName, setSaveThemeName] = useState('');
+    const [isSmartApplying, setIsSmartApplying] = useState(false);
+    const [smartProgress, setSmartProgress] = useState({ current: 0, total: 0 });
+    const [progressLogs, setProgressLogs] = useState([]); // Array of log strings
 
     const handleColorChange = (colorKey, value) => {
         updateTheme({ colors: { [colorKey]: value } });
@@ -116,6 +127,94 @@ export default function ThemeEditor() {
             alert('Failed to generate theme: ' + error.message);
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleSmartApply = async () => {
+        if (!pages?.length) {
+            alert("No pages found.");
+            return;
+        }
+
+        if (!confirm("This will automatically map the theme colors and fonts to EVERY section on EVERY page.\n\nThis is a destructive operation that replaces custom colors.\n\nContinue?")) return;
+
+        setIsSmartApplying(true);
+        setProgressLogs([]); // Clear previous logs
+        const addLog = (msg) => setProgressLogs(prev => [...prev, `> ${msg}`]);
+
+        addLog("Initializing Auto-Map sequence...");
+        addLog(`Found ${pages.length} pages to process.`);
+
+        // Calculate total sections for progress
+        const totalSections = pages.reduce((acc, p) => acc + (p.sections?.length || 0), 0);
+        let processedSections = 0;
+
+        setSmartProgress({ current: 0, total: totalSections });
+
+        try {
+            // Iterate through ALL pages
+            for (const page of pages) {
+                if (!page.sections || page.sections.length === 0) continue;
+
+                addLog(`[Page: ${page.title}] Processing ${page.sections.length} sections...`);
+
+                // Apply to this page's sections
+                const updates = await SmartThemeService.applyToPage(
+                    page.sections,
+                    activeTheme,
+                    (currentInPage, totalInPage, msg) => {
+                        if (msg) addLog(`  - ${msg}`);
+                    }
+                );
+
+                // Construct new sections array for this page
+                const newSections = page.sections.map(section => {
+                    const update = updates.find(u => u.id === section.id);
+                    if (update) {
+                        processedSections++;
+                        setSmartProgress({ current: processedSections, total: totalSections });
+                        return { ...section, content: update.content };
+                    }
+                    return section;
+                });
+
+                // Update the page in the store
+                updatePage(page.id, { sections: newSections });
+                addLog(`[Page: ${page.title}] Update complete.`);
+            }
+
+            // --- Process Navbar & Footer (Global) ---
+            if (navbar) {
+                addLog(`Processing Global Navbar...`);
+                const updatedNavbar = await SmartThemeService.applyToSection(
+                    { type: 'NAVBAR', content: navbar },
+                    activeTheme,
+                    (msg) => addLog(`  - ${msg}`)
+                );
+                updateNavbar(updatedNavbar);
+                addLog(`Global Navbar updated.`);
+            }
+
+            if (footer) {
+                addLog(`Processing Global Footer...`);
+                // Footer acts as the "last" section, so passing a high index creates alternate contrast if needed.
+                const updatedFooter = await SmartThemeService.applyToSection(
+                    { type: 'FOOTER', content: footer },
+                    activeTheme,
+                    (msg) => addLog(`  - ${msg}`),
+                    99
+                );
+                updateFooter(updatedFooter);
+                addLog(`Global Footer updated.`);
+            }
+
+            addLog("Auto-Map complete! All pages updated.");
+            alert(`Successfully smart-applied theme to all ${processedSections} sections across ${pages.length} pages!`);
+        } catch (error) {
+            console.error("Smart apply failed:", error);
+            alert("Failed to apply theme: " + error.message);
+        } finally {
+            setIsSmartApplying(false);
         }
     };
 
@@ -317,9 +416,45 @@ export default function ThemeEditor() {
 
             {/* Preview Strip */}
             <div className="mt-8 p-6 rounded-lg border border-gray-800" style={{ backgroundColor: activeTheme.colors.background }}>
-                <h3 className="text-lg font-semibold mb-4" style={{ color: activeTheme.colors.text, fontFamily: activeTheme.fonts.heading }}>
-                    Live Preview
-                </h3>
+                <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold" style={{ color: activeTheme.colors.text, fontFamily: activeTheme.fonts.heading }}>
+                        Live Preview & Smart Apply
+                    </h3>
+
+                    <button
+                        onClick={handleSmartApply}
+                        disabled={isSmartApplying}
+                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded font-medium text-sm transition-all shadow-lg hover:shadow-blue-500/20 disabled:opacity-50"
+                    >
+                        {isSmartApplying ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Applying ({smartProgress.current}/{smartProgress.total})
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles size={16} className="text-yellow-300" />
+                                Auto-Map Theme to All Pages
+                            </>
+                        )}
+                    </button>
+                </div>
+
+                {/* Progress Log Console */}
+                {isSmartApplying && (
+                    <div className="mb-4 bg-black rounded border border-gray-800 p-3 font-mono text-xs max-h-48 overflow-y-auto shadow-inner">
+                        <div className="text-gray-500 mb-2 border-b border-gray-800 pb-1">System Log:</div>
+                        <div className="space-y-1">
+                            {progressLogs.map((log, i) => (
+                                <div key={i} className={`${log.startsWith('>') ? 'text-blue-400' : 'text-gray-300 ml-2'}`}>
+                                    {log}
+                                </div>
+                            ))}
+                            <div className="animate-pulse text-blue-500 mt-2">_</div>
+                        </div>
+                    </div>
+                )}
+
                 <p className="mb-4" style={{ color: activeTheme.colors.textMuted, fontFamily: activeTheme.fonts.body }}>
                     This is how your theme will look. The primary accent color is used for buttons and highlights.
                 </p>

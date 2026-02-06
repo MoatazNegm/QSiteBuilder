@@ -26,7 +26,7 @@ const Navbar = ({ logo, logoSize, links, ctaText, onLogoClick, className, style 
 
   return (
     <nav
-      className={`fixed w-full z-50 border-b border-gray-900 bg-black/95 backdrop-blur-md ${className || ''}`}
+      className={`fixed w-full z-50 border-b border-theme bg-theme-background/95 backdrop-blur-md ${className || ''}`}
       style={style}
     >
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-12 h-20 md:h-28 flex items-center justify-between">

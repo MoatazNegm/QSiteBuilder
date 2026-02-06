@@ -9,18 +9,109 @@ import ImageUploadField from '../../components/ui/ImageUploadField';
 import AIContentFiller from '../../components/ui/AIContentFiller';
 
 const PropertyPanel = () => {
-  const { sections, selectedSectionId, updateSection, navbar, updateNavbar, footer, updateFooter, pages } = useContentStore();
+  const { sections, selectedSectionId, updateSection, navbar, updateNavbar, footer, updateFooter, pages, activePage, updatePage } = useContentStore();
 
   // Helper to determine what we are editing
   const isNavbar = selectedSectionId === 'NAVBAR';
   const isFooter = selectedSectionId === 'FOOTER';
   const selectedSection = sections.find(s => s.id === selectedSectionId);
 
-  // If nothing selected and not special section, show placeholder
+  // --- Page Settings Editor (When no section is selected) ---
+  const renderPageSettings = () => {
+    if (!activePage) return null;
+
+    const styles = activePage.styles || {};
+
+    const updatePageStyle = (field, value) => {
+      updatePage(activePage.id, {
+        styles: { ...styles, [field]: value }
+      });
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Label>Page Title</Label>
+          <Input
+            value={activePage.title}
+            onChange={(e) => updatePage(activePage.id, { title: e.target.value })}
+            className="font-bold text-gray-900 bg-white"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Page Slug (URL)</Label>
+          <Input
+            value={activePage.slug}
+            readOnly
+            disabled
+            className="font-mono text-gray-500 bg-gray-100 text-xs"
+          />
+        </div>
+
+        {/* Page Colors */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <Label className="text-xs font-semibold text-gray-500 uppercase">Page Styling (Overrides Theme)</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Background</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={styles.backgroundColor || '#ffffff'}
+                  onChange={(e) => updatePageStyle('backgroundColor', e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={styles.backgroundColor || ''}
+                  onChange={(e) => updatePageStyle('backgroundColor', e.target.value)}
+                  className="h-8 text-xs font-mono"
+                  placeholder="Default"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Text Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={styles.color || '#000000'}
+                  onChange={(e) => updatePageStyle('color', e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={styles.color || ''}
+                  onChange={(e) => updatePageStyle('color', e.target.value)}
+                  className="h-8 text-xs font-mono"
+                  placeholder="Default"
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-2">
+            Note: Setting these will override the global theme for this page.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // If nothing selected and not special section, show Page Settings
   if (!selectedSection && !isNavbar && !isFooter) {
     return (
-      <div className="w-80 border-l border-gray-200 bg-white p-8 flex flex-col items-center justify-center text-center text-gray-500 h-full">
-        <p>Select a section to edit properties</p>
+      <div className="w-96 border-l border-gray-200 bg-white flex flex-col h-full shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10">
+        <div className="p-4 border-b border-gray-200 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings2 size={16} className="text-purple-500" />
+            <h2 className="font-semibold text-sm text-gray-900">Page Settings</h2>
+          </div>
+          <p className="text-[10px] text-gray-400 font-mono truncate pl-6">
+            Editing: {activePage?.title || 'Unknown Page'}
+          </p>
+        </div>
+
+        <div className="p-5 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-200">
+          {renderPageSettings()}
+        </div>
       </div>
     );
   }
@@ -65,6 +156,64 @@ const PropertyPanel = () => {
               className="text-gray-900 bg-white"
             />
             <span className="text-xs text-gray-500">%</span>
+          </div>
+        </div>
+
+        {/* Navbar Colors */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <Label className="text-xs font-semibold text-gray-500 uppercase">Colors</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Background</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={navbar.style?.backgroundColor || '#000000'}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, backgroundColor: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={navbar.style?.backgroundColor || ''}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, backgroundColor: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Text Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={navbar.style?.color || '#ffffff'}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, color: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={navbar.style?.color || ''}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, color: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#ffffff"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Border Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={navbar.style?.borderColor || '#333333'}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, borderColor: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={navbar.style?.borderColor || ''}
+                  onChange={(e) => updateNavbar({ style: { ...navbar.style, borderColor: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#333333"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div className="space-y-2">
@@ -157,6 +306,64 @@ const PropertyPanel = () => {
             onChange={(e) => updateFooter({ copyright: e.target.value })}
             className="text-gray-900 bg-white"
           />
+        </div>
+
+        {/* Footer Colors */}
+        <div className="space-y-3 pt-2 border-t border-gray-100">
+          <Label className="text-xs font-semibold text-gray-500 uppercase">Colors</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[10px]">Background</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={footer.style?.backgroundColor || '#000000'}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, backgroundColor: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={footer.style?.backgroundColor || ''}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, backgroundColor: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Text Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={footer.style?.color || '#ffffff'}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, color: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={footer.style?.color || ''}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, color: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#ffffff"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px]">Border Color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={footer.style?.borderColor || '#333333'}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, borderColor: e.target.value } })}
+                  className="w-8 h-8 rounded cursor-pointer border border-gray-200"
+                />
+                <Input
+                  value={footer.style?.borderColor || ''}
+                  onChange={(e) => updateFooter({ style: { ...footer.style, borderColor: e.target.value } })}
+                  className="h-8 text-xs font-mono"
+                  placeholder="#333333"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="p-3 bg-blue-50 text-blue-700 text-xs rounded">

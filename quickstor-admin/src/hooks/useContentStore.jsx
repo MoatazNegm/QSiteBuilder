@@ -468,6 +468,41 @@ export const ContentProvider = ({ children }) => {
     setSelectedSectionId(newId);
   }, [activePageId, markDirty]);
 
+  const moveSection = useCallback((pageId, index, direction) => {
+    setPages(prev => prev.map(page => {
+      if (page.id !== pageId) return page;
+      const newSections = [...page.sections];
+      if (direction === 'up' && index > 0) {
+        [newSections[index], newSections[index - 1]] = [newSections[index - 1], newSections[index]];
+      } else if (direction === 'down' && index < newSections.length - 1) {
+        [newSections[index], newSections[index + 1]] = [newSections[index + 1], newSections[index]];
+      }
+      return { ...page, sections: newSections };
+    }));
+    markDirty(); // Mark as changed
+  }, [markDirty]);
+
+  const resetPageLayout = useCallback((pageId) => {
+    markDirty();
+    setPages(prev => prev.map(page => {
+      if (page.id !== pageId) return page;
+
+      const newSections = page.sections.map(section => ({
+        ...section,
+        content: {
+          ...section.content,
+          styles: {
+            ...section.content?.styles,
+            scale: 1,
+            position: { x: 0, y: 0 }
+          }
+        }
+      }));
+
+      return { ...page, sections: newSections };
+    }));
+  }, [markDirty]);
+
   const deleteSection = useCallback((id) => {
     markDirty(); // Flag as unsaved
     setPages(prev => prev.map(page => {
@@ -502,6 +537,8 @@ export const ContentProvider = ({ children }) => {
       reorderSections,
       addSection,
       deleteSection,
+      moveSection,
+      resetPageLayout,
 
       // Theme State
       activeTheme,
