@@ -58,7 +58,7 @@ const SectionList = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200 w-80 shrink-0 font-sans">
+    <div className="flex flex-col h-full bg-white border-r border-gray-200 w-80 shrink-0 font-sans" title="Sections Panel - Manage page sections, navbar, and footer">
 
       {/* --- Page Manager & Global Settings --- */}
       <div className="p-4 bg-gray-50 border-b border-gray-200 space-y-4">
@@ -72,6 +72,7 @@ const SectionList = () => {
                 ? "bg-blue-50 text-blue-700 border-blue-200"
                 : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
             )}
+            title="Edit the navigation bar - logo, menu links, and styling"
           >
             Edit Navbar
           </button>
@@ -83,6 +84,7 @@ const SectionList = () => {
                 ? "bg-blue-50 text-blue-700 border-blue-200"
                 : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:shadow-sm"
             )}
+            title="Edit the page footer - copyright text, links, and contact info"
           >
             Edit Footer
           </button>
@@ -90,7 +92,7 @@ const SectionList = () => {
       </div>
 
       {/* --- Sections Header --- */}
-      <div className="p-3 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-20">
+      <div className="p-3 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-20" title="Page sections">
         <h2 className="font-semibold text-sm text-gray-700">Sections</h2>
 
         <div className="relative">
@@ -99,6 +101,7 @@ const SectionList = () => {
             variant="outline"
             onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
             className="h-8 px-3 gap-2 text-xs bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
+            title="Add a new section - Choose from built-in sections (Hero, Feature Grid, Graph) or your custom sections"
           >
             <Plus size={14} /> Add Section <ChevronDown size={12} />
           </Button>
@@ -118,6 +121,7 @@ const SectionList = () => {
                 <button
                   onClick={() => handleAddSection('COMPARISON_GRAPH')}
                   className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 bg-white hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                  title="Add an interactive bar chart for comparing features or metrics"
                 >
                   <BarChart2 size={16} className="text-gray-500" />
                   Comparison Graph
@@ -125,6 +129,7 @@ const SectionList = () => {
                 <button
                   onClick={() => handleAddSection('FEATURE_GRID')}
                   className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 bg-white hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                  title="Add a grid layout for showcasing product features with icons"
                 >
                   <Grid size={16} className="text-gray-500" />
                   Feature Grid
@@ -132,6 +137,7 @@ const SectionList = () => {
                 <button
                   onClick={() => handleAddSection('HERO')}
                   className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-900 bg-white hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 transition-colors"
+                  title="Add a large banner section with title, description, and call-to-action buttons"
                 >
                   <Layout size={16} className="text-gray-500" />
                   Hero Section
@@ -186,6 +192,7 @@ const SectionList = () => {
                         <div
                           {...provided.dragHandleProps}
                           className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing p-1 -ml-1 rounded hover:bg-gray-100"
+                          title="Drag to reorder this section on the page"
                         >
                           <GripVertical size={14} />
                         </div>

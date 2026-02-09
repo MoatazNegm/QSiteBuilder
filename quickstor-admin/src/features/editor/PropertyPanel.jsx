@@ -98,8 +98,8 @@ const PropertyPanel = () => {
   // If nothing selected and not special section, show Page Settings
   if (!selectedSection && !isNavbar && !isFooter) {
     return (
-      <div className="w-96 border-l border-gray-200 bg-white flex flex-col h-full shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10">
-        <div className="p-4 border-b border-gray-200 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="w-96 border-l border-gray-200 bg-white flex flex-col h-full shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-10" title="Properties Panel - Edit content, styles, and settings for the selected section">
+        <div className="p-4 border-b border-gray-200 bg-gray-50/50 backdrop-blur-sm sticky top-0 z-10" title="Click a section in the left panel or preview to edit it here">
           <div className="flex items-center gap-2 mb-1">
             <Settings2 size={16} className="text-purple-500" />
             <h2 className="font-semibold text-sm text-gray-900">Page Settings</h2>

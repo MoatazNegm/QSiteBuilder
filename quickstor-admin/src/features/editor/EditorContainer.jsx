@@ -34,7 +34,7 @@ const EditorContainer = () => {
             "hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200",
             "text-gray-500 transition-all"
           )}
-          title={isFullscreen ? "Exit Fullscreen" : "Maximize Preview"}
+          title={isFullscreen ? "Exit Fullscreen - Return to normal view" : "Maximize Preview - View the preview in fullscreen mode"}
         >
           {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
         </Button>
@@ -50,7 +50,7 @@ const EditorContainer = () => {
             "hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200",
             "text-gray-500 transition-all"
           )}
-          title={showProperties ? "Hide Properties" : "Show Properties"}
+          title={showProperties ? "Hide Properties Panel - Expand preview area" : "Show Properties Panel - Edit section content and styles"}
         >
           {showProperties ? <PanelRightClose size={16} /> : <Settings2 size={16} />}
         </Button>

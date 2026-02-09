@@ -240,7 +240,7 @@ const LivePreview = () => {
               ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
               : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-blue-600 border-gray-200 hover:border-blue-300'
               }`}
-            title="Toggle Style Mode (S)"
+            title="Style Mode: Click elements in the preview to edit their colors, fonts, and spacing. Press 'S' to toggle."
           >
             <Paintbrush size={13} className={styleEditorEnabled ? 'text-white' : 'text-blue-500'} />
             <span>Style Mode</span>
@@ -257,7 +257,7 @@ const LivePreview = () => {
               }
             }}
             className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-gray-50 text-gray-600 hover:text-blue-600 border border-gray-200 hover:border-blue-300 rounded-md transition-all shadow-sm group"
-            title="Reset All Sections Scale & Position"
+            title="Reset all sections to their original size, scale, and position. Useful for starting fresh."
           >
             <Settings size={13} className="group-hover:rotate-180 transition-transform duration-500" />
             <span>Reset Page Layout</span>

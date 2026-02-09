@@ -152,7 +152,7 @@ const VisualSectionWrapper = ({
                 <div
                     className="absolute top-1/2 -left-3 -translate-y-1/2 w-3 h-12 z-25 cursor-move flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-l-md"
                     onMouseDown={handleDragStart}
-                    title="Drag to move"
+                    title="Drag this handle to move the entire section. Tip: Use blue handles to move, green to resize."
                     style={{ zoom: 1 / scale }}
                 >
                     <div className="w-0.5 h-6 bg-white/60 rounded-full" />
@@ -166,7 +166,7 @@ const VisualSectionWrapper = ({
                     <div
                         className="absolute top-0 -right-3 w-3 h-1/3 z-30 cursor-move flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-tr-md"
                         onMouseDown={handleDragStart}
-                        title="Drag to move"
+                        title="Drag this blue handle to move the section across the page"
                         style={{ zoom: 1 / scale }}
                     >
                         <div className="w-0.5 h-4 bg-white/60 rounded-full" />
@@ -175,7 +175,7 @@ const VisualSectionWrapper = ({
                     <div
                         className="absolute top-1/3 -right-3 w-3 h-2/3 z-30 cursor-ew-resize flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-br-md"
                         onMouseDown={handleResizeStart('width')}
-                        title="Resize width"
+                        title="Drag to change section width. The green area resizes, blue moves."
                         style={{ zoom: 1 / scale }}
                     >
                         <div className="w-0.5 h-8 bg-white/70 rounded-full" />
@@ -190,7 +190,7 @@ const VisualSectionWrapper = ({
                     <div
                         className="absolute left-0 -bottom-3 w-1/3 h-3 z-30 cursor-move flex items-center justify-center bg-blue-500 hover:bg-blue-600 rounded-bl-md"
                         onMouseDown={handleDragStart}
-                        title="Drag to move"
+                        title="Drag this blue handle to move the section across the page"
                         style={{ zoom: 1 / scale }}
                     >
                         <div className="h-0.5 w-4 bg-white/60 rounded-full" />
@@ -199,7 +199,7 @@ const VisualSectionWrapper = ({
                     <div
                         className="absolute left-1/3 -bottom-3 w-2/3 h-3 z-30 cursor-ns-resize flex items-center justify-center bg-green-500 hover:bg-green-600 rounded-br-md"
                         onMouseDown={handleResizeStart('height')}
-                        title="Resize height"
+                        title="Drag to change section height. The green area resizes, blue moves."
                         style={{ zoom: 1 / scale }}
                     >
                         <div className="h-0.5 w-8 bg-white/70 rounded-full" />
@@ -212,7 +212,7 @@ const VisualSectionWrapper = ({
                 <div
                     className="absolute -bottom-3 -right-3 w-5 h-5 bg-orange-500 border border-white shadow-md rounded z-40 cursor-se-resize flex items-center justify-center hover:scale-110 transition-transform"
                     onMouseDown={handleResizeStart('both')}
-                    title="Scale proportionally"
+                    title="Drag to scale the section proportionally. Changes zoom level."
                     style={{ zoom: 1 / scale }}
                 >
                     <div className="w-2 h-2 bg-white rounded-full pointer-events-none" />
