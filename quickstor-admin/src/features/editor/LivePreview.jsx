@@ -215,7 +215,7 @@ const LivePreview = () => {
       const target = e.target.closest('a, button[type="submit"], [onclick]');
       if (target) {
         e.preventDefault();
-        e.stopPropagation();
+        // Don't stop propagation - let style editor click handler still work
       }
     };
 
