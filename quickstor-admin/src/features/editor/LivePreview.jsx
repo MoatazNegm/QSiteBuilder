@@ -323,6 +323,18 @@ const LivePreview = () => {
                         }
                       });
                     }}
+                    width={section.content?.styles?.width || null}
+                    height={section.content?.styles?.height || null}
+                    onSizeChange={(newWidth, newHeight) => {
+                      updateSection(section.id, {
+                        ...section.content,
+                        styles: {
+                          ...section.content.styles,
+                          width: newWidth,
+                          height: newHeight
+                        }
+                      });
+                    }}
                   >
                     <SectionEditorProvider
                       sectionId={section.id}
