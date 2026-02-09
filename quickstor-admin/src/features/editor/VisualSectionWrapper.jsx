@@ -112,8 +112,9 @@ const VisualSectionWrapper = ({
         <div
             ref={wrapperRef}
             className={cn(
-                "relative group transition-all duration-200 mb-4",
-                isSelected ? "ring-2 ring-blue-500 z-10" : "hover:ring-1 hover:ring-blue-300"
+                "relative group mb-4",
+                isSelected ? "ring-2 ring-blue-500 z-10" : "hover:ring-1 hover:ring-blue-300",
+                !isDragging && !isResizing && "transition-all duration-200"
             )}
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
             style={{
@@ -123,7 +124,8 @@ const VisualSectionWrapper = ({
                 zIndex: isDragging || isResizing ? 50 : (isSelected ? 40 : 1),
                 width: width ? `${width}px` : '100%',
                 height: height ? `${height}px` : 'auto',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                transition: isDragging || isResizing ? 'none' : undefined
             }}
         >
             {/* Selection Overlay */}
