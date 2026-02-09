@@ -507,7 +507,7 @@ const Settings = () => {
                                     Download Backup
                                 </h3>
                                 <p className="text-sm text-gray-500 mb-4">
-                                    Create a JSON file containing all pages, navigation, global settings, custom sections, and themes. Use this to save your progress.
+                                    Create a JSON file containing all pages (with section positions, sizes, and styles), navigation, global settings, custom sections, and themes. Use this to save your progress.
                                 </p>
                             </div>
                             <Button onClick={handleExport} disabled={isExporting} variant="outline" className="w-full justify-center bg-white">

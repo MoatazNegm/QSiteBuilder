@@ -206,6 +206,23 @@ const LivePreview = () => {
     }
   }, [activeTheme]);
 
+  // Prevent link/button navigation in preview (allows styling instead)
+  useEffect(() => {
+    const container = previewRef.current;
+    if (!container) return;
+
+    const preventNavigation = (e) => {
+      const target = e.target.closest('a, button[type="submit"], [onclick]');
+      if (target) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    container.addEventListener('click', preventNavigation, true);
+    return () => container.removeEventListener('click', preventNavigation, true);
+  }, []);
+
   const handleMoveUp = (index) => {
     if (index === 0) return;
     const newSections = [...sections];

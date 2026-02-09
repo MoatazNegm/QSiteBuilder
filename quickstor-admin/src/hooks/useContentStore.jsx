@@ -494,6 +494,8 @@ export const ContentProvider = ({ children }) => {
           styles: {
             ...section.content?.styles,
             scale: 1,
+            width: null,
+            height: null,
             position: { x: 0, y: 0 }
           }
         }
