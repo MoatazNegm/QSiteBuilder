@@ -11,6 +11,7 @@ import { SectionRenderer } from './components/SectionRenderer';
 
 // Import Staging Banner
 import StagingBanner from './components/StagingBanner';
+import FrozenElementWrapper from './components/FrozenElementWrapper';
 
 // Import Data
 import { defaultContent } from './data/defaultContent';
@@ -59,7 +60,16 @@ function PageContent({ pages, navbar, footer }) {
       {/* Dynamic Sections Loop - Show 404 message if no page found and no fallback */}
       <div className={IS_STAGING ? 'pt-36 md:pt-48' : 'pt-20 md:pt-28'}>
         {pageToRender ? (
-          <main className="flex-grow flex flex-col">
+          <main className="flex-grow flex flex-col relative w-full overflow-x-hidden">
+            {/* Absolute Elements Layer */}
+            {pageToRender.elements && pageToRender.elements.map(el => (
+              <FrozenElementWrapper
+                key={el.id}
+                element={el}
+                pages={pages}
+              />
+            ))}
+
             <div className="flex flex-wrap items-start content-start w-full">
               <SectionRenderer sections={pageToRender.sections || []} />
             </div>
