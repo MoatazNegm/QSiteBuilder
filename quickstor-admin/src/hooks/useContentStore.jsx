@@ -49,13 +49,31 @@ export const ContentProvider = ({ children }) => {
   // Custom Sections Library - Start empty, Firestore is source of truth
   const [customSections, setCustomSections] = useState([]);
 
+  // Custom Elements - Initialize from LocalStorage or Firestore logic
+  const [customElements, setCustomElements] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quickstor_customElements');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+
+      // Sanitize data (fix bad names from previous bug)
+      return parsed.map(el => ({
+        ...el,
+        name: typeof el.name === 'object' ? 'Recovered Element' : (el.name || 'Unnamed Element')
+      }));
+    } catch (e) {
+      console.error("Failed to load custom elements", e);
+      return [];
+    }
+  });
+
   // Change Tracking State
   const [stagingSnapshot, setStagingSnapshot] = useState(null); // Deep copy of what's in DB
   const [liveSnapshot, setLiveSnapshot] = useState(null);       // Deep copy of Live DB
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [hasPendingPublish, setHasPendingPublish] = useState(false);
 
-  // Load ALL content from Firestore on startup (sync across browsers)
   // Load ALL content from Firestore on startup (sync across browsers)
   useEffect(() => {
     const loadFromFirestore = async () => {
@@ -97,6 +115,13 @@ export const ContentProvider = ({ children }) => {
             setActiveTheme(data.theme);
             localStorage.setItem('quickstor_activeTheme', JSON.stringify(data.theme));
           }
+
+          // Sync customElements
+          if (data.customElements && Array.isArray(data.customElements)) {
+            setCustomElements(data.customElements);
+            localStorage.setItem('quickstor_customElements', JSON.stringify(data.customElements));
+          }
+
 
           // Sync custom sections
           const firestoreSections = data.customSections && Array.isArray(data.customSections)
@@ -175,6 +200,7 @@ export const ContentProvider = ({ children }) => {
         theme: activeTheme,
         savedThemes: savedThemes,
         customSections: customSections,
+        customElements: customElements,
         lastUpdated: new Date()
       };
 
@@ -547,6 +573,46 @@ export const ContentProvider = ({ children }) => {
     }));
   }, [activePageId, markDirty]);
 
+  // --- Custom Element Library Actions ---
+
+  const saveElementToLibrary = useCallback((elementData) => {
+    markDirty();
+    // Support both single object and legacy (name, html, category) args if needed, 
+    // but for now we'll assume object based on the new call site.
+    // Actually, to be safe, let's check input type.
+    let name, html, category, tags;
+
+    if (typeof elementData === 'object' && elementData !== null && !elementData.nativeEvent) {
+      ({ name, html, category = 'Custom', tags =[] } = elementData);
+    } else {
+      // Fallback or legacy signature handling if ever used differently
+      // But since I control usage, I'll enforce object.
+      name = arguments[0];
+      html = arguments[1];
+      category = arguments[2] || 'Custom';
+      tags = [];
+    }
+
+    const newElement = {
+      id: `custom-el-${Date.now()}`,
+      name: name || `Element ${customElements.length + 1}`,
+      category,
+      tags,
+      html
+    };
+    const updatedElements = [...customElements, newElement];
+    setCustomElements(updatedElements);
+    localStorage.setItem('quickstor_customElements', JSON.stringify(updatedElements));
+    return newElement;
+  }, [customElements, markDirty]);
+
+  const deleteElementFromLibrary = useCallback((id) => {
+    markDirty();
+    const updatedElements = customElements.filter(el => el.id !== id);
+    setCustomElements(updatedElements);
+    localStorage.setItem('quickstor_customElements', JSON.stringify(updatedElements));
+  }, [customElements, markDirty]);
+
   return (
     <ContentContext.Provider value={{
       // Page State
@@ -591,6 +657,11 @@ export const ContentProvider = ({ children }) => {
       // Custom Sections Library
       customSections,
       setCustomSections,
+
+      // Custom Elements Library
+      customElements,
+      saveElementToLibrary,
+      deleteElementFromLibrary,
 
       // Persistence
       // Persistence

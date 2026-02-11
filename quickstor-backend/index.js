@@ -7,6 +7,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import multer from 'multer';
+
 const app = express();
 const PORT = 3000;
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -17,6 +19,33 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // --- STATIC FILES SERVING (Render Deployment) ---
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Configure Multer for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(PUBLIC_DIR, 'uploads');
+        // Ensure directory exists
+        fs.mkdir(uploadDir, { recursive: true })
+            .then(() => cb(null, uploadDir))
+            .catch(err => cb(err));
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage: storage });
+
+// Upload Endpoint
+app.post('/api/upload', upload.single('file'), (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    // Return the public URL
+    const publicUrl = `/uploads/${req.file.filename}`;
+    res.json({ url: publicUrl });
+});
 
 // 1. Admin Portal -> /adminportal
 app.use('/adminportal', express.static(path.join(PUBLIC_DIR, 'adminportal')));

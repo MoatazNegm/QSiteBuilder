@@ -1,7 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, MousePointer2, Move } from 'lucide-react';
+import { X, MousePointer2, Move, Sparkles, Trash2, Plus } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useContentStore } from '../../hooks/useContentStore';
+import AICreatorModal from '../../components/ui/AICreatorModal';
 
 // Pre-built UI elements catalog
 const ELEMENT_CATALOG = [
@@ -104,6 +106,19 @@ const ElementLibrary = ({ isOpen, onClose }) => {
     const dragStartRef = useRef({ x: 0, y: 0 });
     const startPosRef = useRef({ x: 0, y: 0 });
 
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const { customElements, saveElementToLibrary, deleteElementFromLibrary } = useContentStore();
+
+    const handleAISave = (html, name) => {
+        saveElementToLibrary({
+            html,
+            name: name || `AI Generated Element ${new Date().toLocaleTimeString()}`,
+            category: 'custom',
+            tags: ['ai', 'custom']
+        });
+        setIsAIModalOpen(false);
+    };
+
     // --- Panel Drag Logic ---
     const handleMouseDown = useCallback((e) => {
         // Only drag from header area
@@ -141,7 +156,7 @@ const ElementLibrary = ({ isOpen, onClose }) => {
         e.dataTransfer.effectAllowed = 'copy';
     };
 
-    return ReactDOM.createPortal(
+    const libraryPortal = ReactDOM.createPortal(
         <div
             ref={panelRef}
             style={{
@@ -182,8 +197,61 @@ const ElementLibrary = ({ isOpen, onClose }) => {
                 Drag elements onto the preview. Double-click placed elements to edit text.
             </div>
 
+            {/* AI Creator Button */}
+            <div className="p-2 border-b">
+                <button
+                    onClick={() => setIsAIModalOpen(true)}
+                    className="w-full py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-lg flex items-center justify-center gap-2 text-xs font-semibold shadow-sm transition-all"
+                >
+                    <Sparkles size={14} /> Create with AI
+                </button>
+            </div>
+
             {/* Element Categories */}
             <div className="overflow-y-auto flex-1 p-2 space-y-3">
+                {/* Custom Elements Section */}
+                {customElements && customElements.length > 0 && (
+                    <div key="custom-category">
+                        <h4 className="text-[10px] uppercase tracking-wider text-purple-600 font-bold px-2 mb-2 flex items-center gap-1">
+                            <Sparkles size={10} /> Custom Library
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            {customElements.map(element => (
+                                <div
+                                    key={element.id}
+                                    draggable
+                                    onDragStart={(e) => handleDragStart(e, element)}
+                                    className={cn(
+                                        "group relative p-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg cursor-grab active:cursor-grabbing transition-all",
+                                        "hover:border-purple-300 hover:shadow-sm",
+                                        "flex flex-col items-center gap-2 text-center"
+                                    )}
+                                    title={`Drag to add: ${element.name}`}
+                                >
+                                    {/* Delete Button */}
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm('Delete this element?')) deleteElementFromLibrary(element.id);
+                                        }}
+                                        className="absolute top-1 right-1 p-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full"
+                                    >
+                                        <Trash2 size={10} />
+                                    </button>
+
+                                    {/* Mini Preview */}
+                                    <div
+                                        className="w-full h-10 flex items-center justify-center overflow-hidden pointer-events-none transform scale-75"
+                                        dangerouslySetInnerHTML={{ __html: element.html }}
+                                    />
+                                    <span className="text-[10px] text-gray-700 font-medium truncate w-full">
+                                        {element.name}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 {categories.map(category => (
                     <div key={category}>
                         <h4 className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold px-2 mb-2">
@@ -197,7 +265,7 @@ const ElementLibrary = ({ isOpen, onClose }) => {
                                     onDragStart={(e) => handleDragStart(e, element)}
                                     className={cn(
                                         "p-3 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg cursor-grab active:cursor-grabbing transition-all",
-                                        "hover:border-blue-300 hover:shadow-sm",
+                                        "hover:border-purple-300 hover:shadow-sm", // Fixed hover border color to match
                                         "flex flex-col items-center gap-2 text-center"
                                     )}
                                     title={`Drag to add: ${element.name}`}
@@ -218,6 +286,17 @@ const ElementLibrary = ({ isOpen, onClose }) => {
             </div>
         </div>,
         document.body
+    );
+
+    return (
+        <>
+            {libraryPortal}
+            <AICreatorModal
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+                onSave={handleAISave}
+            />
+        </>
     );
 };
 

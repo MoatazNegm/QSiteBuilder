@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Type, Paintbrush, Square, AlignLeft, Move, Undo2, Redo2 } from 'lucide-react';
+import { X, Type, Paintbrush, Square, AlignLeft, Move, Undo2, Redo2, Image } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { parseElementStyles, rgbToHex } from '../../utils/styleUtils';
 
 // Global history map: keyed by element reference, stores { past: [], future: [] }
 const historyMap = new WeakMap();
@@ -51,42 +52,12 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
             element.innerHTML = snapshot.innerHTML;
             setTextContent(element.innerText);
         }
-        // Re-read computed styles into local state
-        const computed = window.getComputedStyle(element);
-        const bgImage = computed.backgroundImage || '';
-        const hasBgGradient = bgImage.includes('linear-gradient');
-        let bgGFrom = '#3b82f6', bgGTo = '#8b5cf6', bgGDir = 'to right';
-        if (hasBgGradient) {
-            const gradMatch = bgImage.match(/linear-gradient\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
-            if (gradMatch) {
-                bgGDir = gradMatch[1].trim();
-                bgGFrom = rgbToHex(gradMatch[2].trim()) || '#3b82f6';
-                bgGTo = rgbToHex(gradMatch[3].trim()) || '#8b5cf6';
-            }
+        if (snapshot.innerHTML !== undefined) {
+            element.innerHTML = snapshot.innerHTML;
+            setTextContent(element.innerText);
         }
-
-        const webkitBgClip = computed.webkitBackgroundClip || '';
-        const hasTextGradient = webkitBgClip === 'text';
-
-        setStyles({
-            color: rgbToHex(computed.color) || '#000000',
-            backgroundColor: computed.backgroundColor === 'rgba(0, 0, 0, 0)' ? '' : rgbToHex(computed.backgroundColor),
-            opacity: Math.round(parseFloat(computed.opacity) * 100) || 100,
-            borderWidth: parseInt(computed.borderWidth) || 0,
-            borderColor: rgbToHex(computed.borderColor) || '#000000',
-            borderRadius: parseInt(computed.borderRadius) || 0,
-            fontSize: parseInt(computed.fontSize) || 16,
-            fontWeight: computed.fontWeight || '400',
-            fontFamily: computed.fontFamily?.split(',')[0]?.replace(/['\"/]/g, '') || 'inherit',
-            bgGradientEnabled: hasBgGradient && !hasTextGradient,
-            bgGradientFrom: bgGFrom,
-            bgGradientTo: bgGTo,
-            bgGradientDirection: bgGDir,
-            textGradientEnabled: hasTextGradient,
-            textGradientFrom: hasTextGradient ? bgGFrom : '#3b82f6',
-            textGradientTo: hasTextGradient ? bgGTo : '#ec4899',
-            textGradientDirection: hasTextGradient ? bgGDir : 'to right'
-        });
+        // Re-read computed styles
+        setStyles(parseElementStyles(element));
     }, [element]);
 
     const handleUndo = useCallback(() => {
@@ -157,6 +128,7 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
     });
 
     const [textContent, setTextContent] = useState('');
+    const [imageSrc, setImageSrc] = useState('');
 
     // --- DRAG LOGIC ---
     const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -167,22 +139,58 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
     // Initialize styles from element
     useEffect(() => {
         if (!element) return;
-
-        const computed = window.getComputedStyle(element);
-        setStyles({
-            color: rgbToHex(computed.color) || '#000000',
-            backgroundColor: computed.backgroundColor === 'rgba(0, 0, 0, 0)' ? '' : rgbToHex(computed.backgroundColor),
-            opacity: Math.round(parseFloat(computed.opacity) * 100) || 100,
-            borderWidth: parseInt(computed.borderWidth) || 0,
-            borderColor: rgbToHex(computed.borderColor) || '#000000',
-            borderRadius: parseInt(computed.borderRadius) || 0,
-            fontSize: parseInt(computed.fontSize) || 16,
-            fontWeight: computed.fontWeight || '400',
-            fontFamily: computed.fontFamily?.split(',')[0]?.replace(/['"]/g, '') || 'inherit'
-        });
-
+        setStyles(parseElementStyles(element));
         setTextContent(element.innerText || '');
+
+        // Image handling
+        if (element.tagName === 'IMG') {
+            setImageSrc(element.src || '');
+        } else {
+            // Check for background image
+            const bgImage = element.style.backgroundImage || window.getComputedStyle(element).backgroundImage;
+            if (bgImage && bgImage !== 'none') {
+                // Extract URL from url("...")
+                const match = bgImage.match(/url\(['"]?(.*?)['"]?\)/);
+                if (match) setImageSrc(match[1]);
+            }
+        }
     }, [element]);
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            // Upload to backend
+            const res = await fetch('http://localhost:3000/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.url) {
+                const fullUrl = `http://localhost:3000${data.url}`;
+                setImageSrc(fullUrl);
+
+                takeSnapshot();
+                if (element.tagName === 'IMG') {
+                    element.src = fullUrl;
+                } else {
+                    element.style.backgroundImage = `url('${fullUrl}')`;
+                    // Ensure bg size/repeat are set reasonably if not already
+                    if (!element.style.backgroundSize) element.style.backgroundSize = 'cover';
+                    if (!element.style.backgroundPosition) element.style.backgroundPosition = 'center';
+                }
+                onUpdate({ image: fullUrl }); // Trigger update
+            }
+        } catch (error) {
+            console.error('Upload failed:', error);
+            alert('Failed to upload image');
+        }
+    };
 
     // Initialize Position (On Mount or New Target)
     useEffect(() => {
@@ -408,16 +416,38 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
             <div className="p-4 space-y-5 overflow-y-auto custom-scrollbar cursor-default" style={{ maxHeight: '60vh' }}>
 
                 {/* Text Content Editor */}
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
-                        <Type size={12} /> Text Content
-                    </label>
-                    <textarea
-                        value={textContent}
-                        onChange={handleTextChange}
-                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white text-sm resize-y min-h-[60px] focus:ring-1 focus:ring-blue-500 outline-none"
-                    />
-                </div>
+                {element && element.tagName === 'IMG' ? (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
+                            <Image size={12} /> Image Source
+                        </label>
+                        <input
+                            type="text"
+                            value={imageSrc}
+                            onChange={(e) => {
+                                const newSrc = e.target.value;
+                                setImageSrc(newSrc);
+                                if (element) element.src = newSrc;
+                            }}
+                            placeholder="https://example.com/image.jpg"
+                            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1.5 text-white text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <div className="text-[10px] text-gray-500">
+                            Enter an image URL to update the image.
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
+                            <Type size={12} /> Text Content
+                        </label>
+                        <textarea
+                            value={textContent}
+                            onChange={handleTextChange}
+                            className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white text-sm resize-y min-h-[60px] focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                )}
 
                 <div className="h-px bg-gray-800" />
 
@@ -573,6 +603,48 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                         />
                     </div>
                 </div>
+
+                {/* Image Settings */}
+                {(element?.tagName === 'IMG' || styles.backgroundImage || imageSrc) && (
+                    <div className="space-y-3 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Image size={14} className="text-gray-500" />
+                            <span className="text-xs font-semibold text-gray-700">Image Source</span>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={imageSrc}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setImageSrc(val);
+                                        if (element.tagName === 'IMG') element.src = val;
+                                        else element.style.backgroundImage = `url('${val}')`;
+                                    }}
+                                    placeholder="Image URL"
+                                    className="flex-1 px-2 py-1 text-xs border rounded bg-gray-50 focus:ring-1 focus:ring-blue-500 outline-none"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <label className="flex-1 cursor-pointer bg-white border border-dashed border-gray-300 rounded-lg p-2 text-center hover:bg-gray-50 transition-colors">
+                                    <span className="text-xs text-gray-600 font-medium">Upload Image</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handleImageUpload}
+                                    />
+                                </label>
+                                {imageSrc && (
+                                    <div className="w-8 h-8 rounded border bg-cover bg-center shrink-0" style={{ backgroundImage: `url(${imageSrc})` }} />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Typography */}
                 <div className="space-y-2">

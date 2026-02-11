@@ -494,5 +494,62 @@ export const AIService = {
             return callOpenAIWithHistoryStream(formattedMessages, onChunk, config.openai);
         }
         return callGeminiAPIWithHistoryStream(formattedMessages, onChunk);
+    },
+
+    generateElement: async (prompt, code = null) => {
+        const config = getAIConfig();
+
+        const systemPrompt = `You are an expert Frontend Developer.
+Your task is to generate a single HTML element based on the user's description.
+- Use Tailwind CSS for styling.
+- Return the result as a VALID JSON object with a single key "html".
+- Example: { "html": "<button class='...'>Click me</button>" }
+- Do not wrap the JSON in markdown code blocks. Just return the raw JSON string.
+- The HTML should be a single root element (e.g. <button>...</button>, <div class="card">...</div>).
+- Ensure high-quality, modern design.`;
+
+        const finalPrompt = `${systemPrompt}\n\n${code ? `Improve/Modify this code based on description: "${prompt}"\n\nCODE:\n${code}` : `Create an element: "${prompt}"`}`;
+
+        try {
+            let responseText;
+            if (config.provider === 'openai') {
+                responseText = await callOpenAI(finalPrompt, config.openai);
+            } else {
+                responseText = await callGeminiAPI(finalPrompt);
+            }
+
+            // Cleanup potential markdown wrappers
+            const cleanText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+            try {
+                const parsed = JSON.parse(cleanText);
+                if (!parsed.html) throw new Error("AI response missing 'html' field");
+                return parsed.html;
+            } catch (jsonError) {
+                console.error("JSON Parse Error:", jsonError, "Raw Text:", cleanText);
+                // Fallback: try to find HTML-like string if JSON parsing failed
+                const htmlMatch = cleanText.match(/<[^>]+>[\s\S]*<\/[^>]+>/);
+                if (htmlMatch) return htmlMatch[0];
+
+                throw new Error("Failed to parse AI response. Raw output: " + cleanText.substring(0, 100) + "...");
+            }
+        } catch (error) {
+            console.error("AI Generation Error:", error);
+            throw error; // Propagate original error for UI to show
+        }
+    },
+
+    getProviderInfo: () => {
+        const config = getAIConfig();
+        if (config.provider === 'openai') {
+            return {
+                provider: 'OpenAI / Compatible',
+                model: config.openai?.model || 'Unknown Model'
+            };
+        }
+        return {
+            provider: 'Google Gemini',
+            model: 'Gemini 1.5 Flash'
+        };
     }
 };
