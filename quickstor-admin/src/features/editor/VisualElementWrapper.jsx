@@ -280,6 +280,7 @@ const VisualElementWrapper = ({
                 overflow: 'visible',
                 transform: `rotate(${rotation}deg)`
             }}
+            data-wrapper="true"
             onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
@@ -327,6 +328,7 @@ const VisualElementWrapper = ({
                         isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                     )}
                     onMouseDown={handleDragStart}
+                    data-no-style="true"
                 >
                     <GripVertical size={12} />
                     <span className="font-bold">Move</span>
@@ -338,6 +340,7 @@ const VisualElementWrapper = ({
                 <div
                     className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center group/rotate"
                     onMouseDown={handleRotateStart}
+                    data-no-style="true"
                 >
                     <div className="w-5 h-5 bg-white border border-blue-500 text-blue-500 rounded-full flex items-center justify-center cursor-crosshair shadow-sm hover:bg-blue-50">
                         <RotateCw size={10} />
@@ -352,25 +355,26 @@ const VisualElementWrapper = ({
                     className="absolute -top-6 -right-2 bg-white text-red-500 border border-gray-200 rounded-full p-1 cursor-pointer hover:bg-red-50 shadow-sm transition-transform hover:scale-110"
                     onClick={handleDelete}
                     title="Delete Element"
+                    data-no-style="true"
                 >
                     <Trash2 size={12} />
                 </div>
             )}
 
             {/* Resize Handles (8 points) */}
-            {isSelected && (
+            {isSelected && !isDragging && !isRotating && (
                 <>
                     {/* Corners */}
-                    <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-nw-resize z-50" onMouseDown={handleResizeStart('nw')} />
-                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-ne-resize z-50" onMouseDown={handleResizeStart('ne')} />
-                    <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-sw-resize z-50" onMouseDown={handleResizeStart('sw')} />
-                    <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-se-resize z-50" onMouseDown={handleResizeStart('se')} />
+                    <div className="absolute -top-1 -left-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-nw-resize z-10" onMouseDown={handleResizeStart('nw')} data-no-style="true" />
+                    <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-ne-resize z-10" onMouseDown={handleResizeStart('ne')} data-no-style="true" />
+                    <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-sw-resize z-10" onMouseDown={handleResizeStart('sw')} data-no-style="true" />
+                    <div className="absolute -bottom-1 -right-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-se-resize z-10" onMouseDown={handleResizeStart('se')} data-no-style="true" />
 
                     {/* Sides */}
-                    <div className="absolute top-1/2 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-w-resize -translate-y-1/2 z-40" onMouseDown={handleResizeStart('w')} />
-                    <div className="absolute top-1/2 -right-1 w-2 h-2 bg-blue-500 rounded-full cursor-e-resize -translate-y-1/2 z-40" onMouseDown={handleResizeStart('e')} />
-                    <div className="absolute -top-1 left-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-n-resize -translate-x-1/2 z-40" onMouseDown={handleResizeStart('n')} />
-                    <div className="absolute -bottom-1 left-1/2 w-2 h-2 bg-blue-500 rounded-full cursor-s-resize -translate-x-1/2 z-40" onMouseDown={handleResizeStart('s')} />
+                    <div className="absolute top-1/2 -left-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-w-resize -translate-y-1/2 z-10" onMouseDown={handleResizeStart('w')} data-no-style="true" />
+                    <div className="absolute top-1/2 -right-1 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-e-resize -translate-y-1/2 z-10" onMouseDown={handleResizeStart('e')} data-no-style="true" />
+                    <div className="absolute -top-1 left-1/2 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-n-resize -translate-x-1/2 z-10" onMouseDown={handleResizeStart('n')} data-no-style="true" />
+                    <div className="absolute -bottom-1 left-1/2 w-2.5 h-2.5 bg-white border border-blue-500 rounded-full cursor-s-resize -translate-x-1/2 z-10" onMouseDown={handleResizeStart('s')} data-no-style="true" />
                 </>
             )}
 

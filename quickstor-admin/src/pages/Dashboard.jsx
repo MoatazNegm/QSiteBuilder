@@ -14,7 +14,8 @@ const Dashboard = () => {
     publishStagingToLive,
     rejectStaging,
     hasUnsavedChanges,
-    hasPendingPublish
+    hasPendingPublish,
+    activePage
   } = useContentStore();
 
   const handleSaveToStaging = async () => {
@@ -61,7 +62,13 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>Edit content here. Changes are saved to <strong>Staging</strong> first.</span>
             <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-            <a href="http://localhost:5176" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline">
+            <a
+              href={`/staging${activePage?.slug === '/' ? '' : (activePage?.slug || '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 flex items-center gap-1 hover:underline"
+              title={`Open ${activePage?.title || 'current page'} in Staging`}
+            >
               <ExternalLink size={12} /> View Staging Site
             </a>
           </div>

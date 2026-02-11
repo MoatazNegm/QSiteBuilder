@@ -29,7 +29,7 @@ import VisualSectionWrapper from './VisualSectionWrapper';
 import VisualElementWrapper from './VisualElementWrapper';
 import FontLoader from '../../../../quickstor-frontend/src/components/FontLoader';
 
-const LivePreview = () => {
+const LivePreview = ({ isFullscreen }) => {
   const previewRef = useRef(null);
   const {
     sections,
@@ -58,6 +58,13 @@ const LivePreview = () => {
   const [styleEditorTarget, setStyleEditorTarget] = useState(null);
   const [styleEditorPosition, setStyleEditorPosition] = useState({ x: 100, y: 100 });
   const hoveredElementRef = useRef(null);
+
+  // Close Element Library when exiting fullscreen
+  useEffect(() => {
+    if (!isFullscreen) {
+      setElementLibraryOpen(false);
+    }
+  }, [isFullscreen]);
 
   // --- Element Library ---
   const [elementLibraryOpen, setElementLibraryOpen] = useState(false);
@@ -131,6 +138,8 @@ const LivePreview = () => {
     if (!target || target === previewRef.current) return false;
     // Exclude the main preview container itself and very high-level wrappers
     if (target.classList?.contains('isolate')) return false;
+    // Exclude element wrappers (we want to style the content inside)
+    if (target.hasAttribute('data-wrapper')) return false;
 
     const tagName = target.tagName;
     // Exclude scripts, styles, meta elements, and UI overlays

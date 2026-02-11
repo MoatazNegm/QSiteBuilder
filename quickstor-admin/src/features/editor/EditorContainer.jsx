@@ -21,7 +21,7 @@ const EditorContainer = () => {
         "flex-1 relative flex flex-col min-w-0 transition-all duration-300",
         isFullscreen && "fixed inset-0 z-50 bg-white h-screen w-screen"
       )}>
-        <LivePreview />
+        <LivePreview isFullscreen={isFullscreen} />
 
         {/* Fullscreen Toggle Button */}
         <Button
