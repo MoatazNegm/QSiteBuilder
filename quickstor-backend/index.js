@@ -144,11 +144,74 @@ async function writeData(data) {
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// GET endpoint to fetch ALL data (for backup)
+// Helper to get media assets as Base64
+async function getMediaAssets() {
+    const media = {};
+    const uploadDir = path.join(PUBLIC_DIR, 'uploads');
+    console.log(`[Backup] Scanning ${uploadDir} for media assets...`);
+
+    try {
+        const files = await fs.readdir(uploadDir);
+        console.log(`[Backup] Found ${files.length} files in uploads directory.`);
+        for (const file of files) {
+            const filePath = path.join(uploadDir, file);
+            // Skip directories
+            const stats = await fs.stat(filePath);
+            if (stats.isDirectory()) continue;
+
+            const content = await fs.readFile(filePath, 'base64');
+            media[`uploads/${file}`] = content;
+            console.log(`[Backup] Bundled: uploads/${file}`);
+        }
+    } catch (e) {
+        console.log('[Backup] No uploads directory found or error reading it.');
+    }
+
+    try {
+        const logoPath = path.join(PUBLIC_DIR, 'logo.png');
+        const logoContent = await fs.readFile(logoPath, 'base64');
+        media['logo.png'] = logoContent;
+        console.log('[Backup] Bundled: logo.png');
+    } catch (e) {
+        console.log('[Backup] No logo.png found in public root.');
+    }
+
+    return media;
+}
+
+// Helper to restore media assets from Base64
+async function restoreMediaAssets(media) {
+    if (!media || typeof media !== 'object') return;
+    const entries = Object.entries(media);
+    console.log(`[Restore] Restoring ${entries.length} media assets...`);
+
+    for (const [relPath, content] of entries) {
+        const fullPath = path.join(PUBLIC_DIR, relPath);
+        const dir = path.dirname(fullPath);
+
+        try {
+            await fs.mkdir(dir, { recursive: true });
+            await fs.writeFile(fullPath, Buffer.from(content, 'base64'));
+            console.log(`[Restore] Successfully restored: ${relPath}`);
+        } catch (e) {
+            console.error(`[Restore] FAILED to restore: ${relPath}`, e);
+        }
+    }
+}
+
+// GET endpoint to fetch ALL data + Media
 app.get('/api/data', async (req, res) => {
     try {
-        console.log('[GET] Fetching ALL data (Backup)');
+        const includeAssets = req.query.assets === 'true';
+        console.log(`[GET] Fetching ALL data (Backup${includeAssets ? ' + Assets' : ''})`);
+
         const allData = await readData();
+
+        if (includeAssets) {
+            const assets = await getMediaAssets();
+            allData._media = assets;
+        }
+
         res.json(allData);
     } catch (error) {
         console.error('Error reading all data:', error);
@@ -156,19 +219,26 @@ app.get('/api/data', async (req, res) => {
     }
 });
 
-// POST endpoint to OVERWRITE ALL data (for restore)
+// POST endpoint to OVERWRITE ALL data + Media
 app.post('/api/data', async (req, res) => {
     try {
         console.log('[POST] Restoring ALL data');
         const newData = req.body;
 
-        // Basic validation
         if (!newData || typeof newData !== 'object') {
             return res.status(400).json({ error: 'Invalid data format' });
         }
 
+        // 1. Restore Media if present
+        if (newData._media) {
+            console.log('Detected media assets in backup, restoring...');
+            await restoreMediaAssets(newData._media);
+            delete newData._media; // Don't save media blob into data.json
+        }
+
+        // 2. Save JSON data
         await writeData(newData);
-        res.json({ success: true, message: 'Full restore completed' });
+        res.json({ success: true, message: 'Full restore completed (Data + Media if present)' });
     } catch (error) {
         console.error('Error restoring data:', error);
         res.status(500).json({ error: 'Internal Server Error' });

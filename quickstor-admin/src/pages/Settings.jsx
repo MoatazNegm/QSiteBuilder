@@ -13,7 +13,8 @@ const Settings = () => {
         footer,
         activeTheme,
         savedThemes,
-        customSections
+        customSections,
+        customElements
     } = useContentStore();
 
     const [config, setConfig] = useState({
@@ -112,8 +113,8 @@ const Settings = () => {
         setStatus({ type: '', message: '' });
 
         try {
-            // 1. Fetch Backend Data (for Live/legacy data)
-            const response = await fetch('/api/data');
+            // 1. Fetch Backend Data (Data + Assets)
+            const response = await fetch('/api/data?assets=true');
             if (!response.ok) throw new Error('Failed to fetch site data');
             const backendData = await response.json();
 
@@ -125,7 +126,8 @@ const Settings = () => {
                 footer,
                 theme: activeTheme,
                 savedThemes,
-                customSections
+                customSections,
+                customElements
             };
 
             // 3. Gather Settings (Local Configuration)
@@ -152,16 +154,22 @@ const Settings = () => {
                 backendData
             };
 
-            // 5. Trigger Download
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+            // 5. Trigger Download using Blob (handles large files/images)
+            const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
             const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("href", url);
             downloadAnchorNode.setAttribute("download", `quickstor-full-backup-${new Date().toISOString().slice(0, 10)}.json`);
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
+            URL.revokeObjectURL(url);
 
-            setStatus({ type: 'success', message: 'Full backup (including unsaved changes) downloaded!' });
+            const mediaCount = backendData._media ? Object.keys(backendData._media).length : 0;
+            setStatus({
+                type: 'success',
+                message: `Full archive downloaded! Includes ${mediaCount} images/assets.`
+            });
         } catch (error) {
             console.error('Export failed:', error);
             setStatus({ type: 'error', message: 'Failed to create backup: ' + error.message });
@@ -231,7 +239,8 @@ const Settings = () => {
                     footer: backup.localConfig.quickstor_footer ? JSON.parse(backup.localConfig.quickstor_footer) : null,
                     savedThemes: backup.localConfig.quickstor_savedThemes ? JSON.parse(backup.localConfig.quickstor_savedThemes) : null,
                     theme: backup.localConfig.quickstor_activeTheme ? JSON.parse(backup.localConfig.quickstor_activeTheme) : null,
-                    customSections: backup.localConfig.quickstor_custom_sections ? JSON.parse(backup.localConfig.quickstor_custom_sections) : null
+                    customSections: backup.localConfig.quickstor_custom_sections ? JSON.parse(backup.localConfig.quickstor_custom_sections) : null,
+                    customElements: backup.localConfig.quickstor_custom_elements ? JSON.parse(backup.localConfig.quickstor_custom_elements) : null
                 };
                 console.log('Restoring from v2.0 LocalConfig');
             }
@@ -275,7 +284,8 @@ const Settings = () => {
                 'quickstor_footer',
                 'quickstor_activeTheme',
                 'quickstor_savedThemes',
-                'quickstor_custom_sections'
+                'quickstor_custom_sections',
+                'quickstor_custom_elements'
             ];
             contentKeys.forEach(key => localStorage.removeItem(key));
 
@@ -507,7 +517,7 @@ const Settings = () => {
                                     Download Backup
                                 </h3>
                                 <p className="text-sm text-gray-500 mb-4">
-                                    Create a JSON file containing all pages (with section positions, sizes, and styles), navigation, global settings, custom sections, and themes. Use this to save your progress.
+                                    Create a comprehensive archive containing all pages, navigation, settings, themes, and **all uploaded images/logos**. This file is a complete, portable snapshot of your entire site.
                                 </p>
                             </div>
                             <Button onClick={handleExport} disabled={isExporting} variant="outline" className="w-full justify-center bg-white">
