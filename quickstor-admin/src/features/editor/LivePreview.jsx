@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Paintbrush } from 'lucide-react';
+import { Settings, Paintbrush, Layers, Undo2, Redo2 } from 'lucide-react';
+import ElementLibrary from './ElementLibrary';
 import { useContentStore } from '../../hooks/useContentStore';
 
 // Import Data Source for static elements (Navbar/Footer)
@@ -25,6 +26,7 @@ const COMPONENT_MAP = {
 };
 
 import VisualSectionWrapper from './VisualSectionWrapper';
+import VisualElementWrapper from './VisualElementWrapper';
 import FontLoader from '../../../../quickstor-frontend/src/components/FontLoader';
 
 const LivePreview = () => {
@@ -32,6 +34,7 @@ const LivePreview = () => {
   const {
     sections,
     activePage,
+    pages,
     navbar,
     footer,
     setActivePageId,
@@ -41,14 +44,87 @@ const LivePreview = () => {
     reorderSections,
     updateSection,
     activeTheme,
-    resetPageLayout
+    resetPageLayout,
+    addElement,
+    updateElement,
+    deleteElement
   } = useContentStore();
+
+  // Selected element ID for wrapper controls
+  const [selectedElementId, setSelectedElementId] = useState(null);
 
   // --- Style Editor Mode ---
   const [styleEditorEnabled, setStyleEditorEnabled] = useState(false);
   const [styleEditorTarget, setStyleEditorTarget] = useState(null);
   const [styleEditorPosition, setStyleEditorPosition] = useState({ x: 100, y: 100 });
   const hoveredElementRef = useRef(null);
+
+  // --- Element Library ---
+  const [elementLibraryOpen, setElementLibraryOpen] = useState(false);
+
+  // --- Global Undo/Redo History (all elements) ---
+  const MAX_GLOBAL_HISTORY = 10;
+  const globalHistoryRef = useRef({ past: [], future: [] });
+  const [globalHistoryVersion, setGlobalHistoryVersion] = useState(0);
+
+  const globalSnapshot = useCallback((el) => {
+    if (!el) return;
+    const history = globalHistoryRef.current;
+    history.past.push({
+      element: el,
+      cssText: el.style.cssText,
+      innerHTML: el.innerHTML
+    });
+    if (history.past.length > MAX_GLOBAL_HISTORY) history.past.shift();
+    history.future = [];
+    setGlobalHistoryVersion(v => v + 1);
+  }, []);
+
+  const globalUndo = useCallback(() => {
+    const history = globalHistoryRef.current;
+    if (history.past.length === 0) return;
+    const entry = history.past.pop();
+    // Save current state of that element to future
+    history.future.push({
+      element: entry.element,
+      cssText: entry.element.style.cssText,
+      innerHTML: entry.element.innerHTML
+    });
+    // Restore
+    entry.element.style.cssText = entry.cssText;
+    entry.element.innerHTML = entry.innerHTML;
+    // Flash highlight
+    entry.element.style.outline = '3px solid rgba(59, 130, 246, 0.8)';
+    entry.element.style.outlineOffset = '2px';
+    setTimeout(() => {
+      entry.element.style.outline = '';
+      entry.element.style.outlineOffset = '';
+    }, 600);
+    setGlobalHistoryVersion(v => v + 1);
+  }, []);
+
+  const globalRedo = useCallback(() => {
+    const history = globalHistoryRef.current;
+    if (history.future.length === 0) return;
+    const entry = history.future.pop();
+    // Save current state to past
+    history.past.push({
+      element: entry.element,
+      cssText: entry.element.style.cssText,
+      innerHTML: entry.element.innerHTML
+    });
+    // Restore
+    entry.element.style.cssText = entry.cssText;
+    entry.element.innerHTML = entry.innerHTML;
+    // Flash highlight
+    entry.element.style.outline = '3px solid rgba(249, 115, 22, 0.8)';
+    entry.element.style.outlineOffset = '2px';
+    setTimeout(() => {
+      entry.element.style.outline = '';
+      entry.element.style.outlineOffset = '';
+    }, 600);
+    setGlobalHistoryVersion(v => v + 1);
+  }, []);
 
   // Helper: Check if element is a meaningful stylable element
   const isStylableElement = useCallback((target) => {
@@ -84,6 +160,10 @@ const LivePreview = () => {
         e.preventDefault();
         setStyleEditorEnabled(prev => !prev);
       }
+      if (e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        setElementLibraryOpen(prev => !prev);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -114,30 +194,74 @@ const LivePreview = () => {
     }
   }, [styleEditorEnabled, isStylableElement]);
 
+  // --- Click-through cycling state ---
+  const clickCycleRef = useRef({ x: 0, y: 0, elements: [], index: -1, timestamp: 0 });
+
   const handlePreviewClick = useCallback((e) => {
     if (!styleEditorEnabled) return;
-    const target = e.target;
 
-    // Find closest text element
-    let el = target;
-    while (el && el !== previewRef.current && !isStylableElement(el)) {
-      el = el.parentElement;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const clickX = e.clientX;
+    const clickY = e.clientY;
+    const now = Date.now();
+    const cycle = clickCycleRef.current;
+
+    // Check if this click is at roughly the same position as the last one (within 5px)
+    // and within 1.5 seconds — if so, cycle to the next element
+    const isSameSpot = Math.abs(clickX - cycle.x) < 5 && Math.abs(clickY - cycle.y) < 5;
+    const isRecent = (now - cycle.timestamp) < 1500;
+
+    if (isSameSpot && isRecent && cycle.elements.length > 0) {
+      // Cycle to the next element in the stack
+      cycle.index = (cycle.index + 1) % cycle.elements.length;
+      cycle.timestamp = now;
+    } else {
+      // New click position — gather all stylable elements at this point
+      const allElements = document.elementsFromPoint(clickX, clickY);
+      const stylableElements = allElements.filter(el => {
+        // Must be inside the preview container
+        if (!previewRef.current?.contains(el)) return false;
+        return isStylableElement(el);
+      });
+
+      // Deduplicate (elementsFromPoint can return parent+child at same point)
+      // Keep unique elements, ordered from topmost to bottommost
+      const seen = new Set();
+      const uniqueElements = stylableElements.filter(el => {
+        if (seen.has(el)) return false;
+        seen.add(el);
+        return true;
+      });
+
+      cycle.x = clickX;
+      cycle.y = clickY;
+      cycle.elements = uniqueElements;
+      cycle.index = 0;
+      cycle.timestamp = now;
     }
 
-    if (el && el !== previewRef.current && isStylableElement(el)) {
-      e.preventDefault();
-      e.stopPropagation();
-
+    const selectedEl = cycle.elements[cycle.index];
+    if (selectedEl) {
       // Assign a temporary edit ID if not present
-      if (!el.getAttribute('data-field') && !el.getAttribute('data-edit-id')) {
+      if (!selectedEl.getAttribute('data-field') && !selectedEl.getAttribute('data-edit-id')) {
         const uniqueId = `edit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        el.setAttribute('data-edit-id', uniqueId);
-        el.setAttribute('data-original-text', el.innerText);
+        selectedEl.setAttribute('data-edit-id', uniqueId);
+        selectedEl.setAttribute('data-original-text', selectedEl.innerText);
       }
 
-      const rect = el.getBoundingClientRect();
+      const rect = selectedEl.getBoundingClientRect();
       setStyleEditorPosition({ x: rect.right + 10, y: rect.top });
-      setStyleEditorTarget(el);
+      setStyleEditorTarget(selectedEl);
+
+      // Briefly highlight the selected element to show what was picked
+      selectedEl.style.outline = '3px solid rgba(59, 130, 246, 1)';
+      selectedEl.style.outlineOffset = '2px';
+      setTimeout(() => {
+        selectedEl.style.outline = '';
+        selectedEl.style.outlineOffset = '';
+      }, 800);
     }
   }, [styleEditorEnabled, isStylableElement]);
 
@@ -146,19 +270,42 @@ const LivePreview = () => {
     if (!styleEditorTarget) return;
     const el = styleEditorTarget;
 
+    // Global snapshot BEFORE applying changes (captures ALL inline styles)
+    globalSnapshot(el);
+
     // Use setProperty with 'important' to override CSS specificity issues
     // especially for AI-generated sections with inline styles
 
-    if (newStyles.color) {
-      el.style.setProperty('color', newStyles.color, 'important');
-    }
-
-    if (newStyles.backgroundColor) {
-      el.style.setProperty('background-color', newStyles.backgroundColor, 'important');
-      el.style.setProperty('background', newStyles.backgroundColor, 'important'); // Also set background shorthand
+    // --- Text Color / Text Gradient ---
+    if (newStyles.textGradientEnabled) {
+      const grad = `linear-gradient(${newStyles.textGradientDirection || 'to right'}, ${newStyles.textGradientFrom || '#3b82f6'}, ${newStyles.textGradientTo || '#ec4899'})`;
+      el.style.setProperty('background', grad, 'important');
+      el.style.setProperty('-webkit-background-clip', 'text', 'important');
+      el.style.setProperty('background-clip', 'text', 'important');
+      el.style.setProperty('-webkit-text-fill-color', 'transparent', 'important');
+      el.style.setProperty('color', 'transparent', 'important');
     } else {
-      el.style.removeProperty('background-color');
-      el.style.removeProperty('background');
+      // Clear text gradient properties
+      el.style.removeProperty('-webkit-background-clip');
+      el.style.removeProperty('background-clip');
+      el.style.removeProperty('-webkit-text-fill-color');
+
+      if (newStyles.color) {
+        el.style.setProperty('color', newStyles.color, 'important');
+      }
+
+      // --- Background / Background Gradient ---
+      if (newStyles.bgGradientEnabled) {
+        const bgGrad = `linear-gradient(${newStyles.bgGradientDirection || 'to right'}, ${newStyles.bgGradientFrom || '#3b82f6'}, ${newStyles.bgGradientTo || '#8b5cf6'})`;
+        el.style.setProperty('background', bgGrad, 'important');
+        el.style.removeProperty('background-color');
+      } else if (newStyles.backgroundColor) {
+        el.style.setProperty('background-color', newStyles.backgroundColor, 'important');
+        el.style.setProperty('background', newStyles.backgroundColor, 'important');
+      } else {
+        el.style.removeProperty('background-color');
+        el.style.removeProperty('background');
+      }
     }
 
     // Opacity
@@ -195,9 +342,42 @@ const LivePreview = () => {
   const handleTextUpdate = useCallback((newText) => {
     if (!styleEditorTarget) return;
     if (styleEditorTarget.innerText !== newText) {
-      styleEditorTarget.innerText = newText;
+      // Global snapshot before text change
+      globalSnapshot(styleEditorTarget);
+
+      // Smart text update: preserve HTML structure, only change text nodes
+      // Walk the DOM to find the deepest element with actual text content
+      const updateTextPreservingStructure = (el, text) => {
+        // If the element has child elements, find the deepest text-bearing one
+        const childElements = el.querySelectorAll('*');
+        if (childElements.length > 0) {
+          // Find leaf elements that contain text (not just whitespace)
+          for (const child of childElements) {
+            // Check if this child has direct text nodes (not from sub-children)
+            for (const node of child.childNodes) {
+              if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                node.textContent = text;
+                return true;
+              }
+            }
+          }
+        }
+        // Fallback: if no child elements with text found,
+        // update direct text nodes of the element itself
+        for (const node of el.childNodes) {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+            node.textContent = text;
+            return true;
+          }
+        }
+        // Last resort: set innerText (only for simple text elements)
+        el.innerText = text;
+        return true;
+      };
+
+      updateTextPreservingStructure(styleEditorTarget, newText);
     }
-  }, [styleEditorTarget]);
+  }, [styleEditorTarget, globalSnapshot]);
 
   // Apply theme to the preview container whenever it changes
   useEffect(() => {
@@ -250,6 +430,44 @@ const LivePreview = () => {
 
         {/* Global Action Toolbar */}
         <div className="flex items-center gap-2">
+          {/* Global Undo/Redo */}
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-md px-1 py-0.5">
+            <button
+              onClick={globalUndo}
+              disabled={globalHistoryRef.current.past.length === 0}
+              className={`relative p-1.5 rounded transition-colors ${globalHistoryRef.current.past.length > 0
+                ? 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
+                : 'text-gray-300 cursor-not-allowed'
+                }`}
+              title={`Undo last style change (${globalHistoryRef.current.past.length} available)`}
+            >
+              <Undo2 size={14} />
+              {globalHistoryRef.current.past.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {globalHistoryRef.current.past.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={globalRedo}
+              disabled={globalHistoryRef.current.future.length === 0}
+              className={`relative p-1.5 rounded transition-colors ${globalHistoryRef.current.future.length > 0
+                ? 'text-orange-600 hover:bg-orange-50 hover:text-orange-700'
+                : 'text-gray-300 cursor-not-allowed'
+                }`}
+              title={`Redo style change (${globalHistoryRef.current.future.length} available)`}
+            >
+              <Redo2 size={14} />
+              {globalHistoryRef.current.future.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">
+                  {globalHistoryRef.current.future.length}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="w-px h-5 bg-gray-200" />
+
           {/* Style Mode Toggle */}
           <button
             onClick={() => setStyleEditorEnabled(prev => !prev)}
@@ -262,6 +480,20 @@ const LivePreview = () => {
             <Paintbrush size={13} className={styleEditorEnabled ? 'text-white' : 'text-blue-500'} />
             <span>Style Mode</span>
             <span className="text-[10px] opacity-60 ml-1">(S)</span>
+          </button>
+
+          {/* Element Library Toggle */}
+          <button
+            onClick={() => setElementLibraryOpen(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1 border rounded-md transition-all shadow-sm group ${elementLibraryOpen
+              ? 'bg-purple-500 text-white border-purple-600 hover:bg-purple-600'
+              : 'bg-white hover:bg-gray-50 text-gray-600 hover:text-purple-600 border-gray-200 hover:border-purple-300'
+              }`}
+            title="Element Library: Drag and drop UI elements like buttons, arrows, and badges into your preview. Press 'A' to toggle."
+          >
+            <Layers size={13} className={elementLibraryOpen ? 'text-white' : 'text-purple-500'} />
+            <span>Elements</span>
+            <span className="text-[10px] opacity-60 ml-1">(A)</span>
           </button>
 
           <div className="w-px h-5 bg-gray-200" />
@@ -282,6 +514,12 @@ const LivePreview = () => {
         </div>
       </div>
 
+      {/* Element Library Panel */}
+      <ElementLibrary
+        isOpen={elementLibraryOpen}
+        onClose={() => setElementLibraryOpen(false)}
+      />
+
       {/* The actual website iframe/container */}
       <div className="flex-1 relative w-full h-full" style={{ transform: 'translate(0)' }}>
         <div
@@ -295,8 +533,54 @@ const LivePreview = () => {
           onMouseOverCapture={handlePreviewMouseOver}
           onMouseOutCapture={handlePreviewMouseOut}
           onClickCapture={handlePreviewClick}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const html = e.dataTransfer.getData('text/html');
+            const elementDataStr = e.dataTransfer.getData('application/element-library');
+
+            if (html && elementDataStr) {
+              const elementData = JSON.parse(elementDataStr);
+              // Get container rect
+              const containerRect = previewRef.current.getBoundingClientRect();
+
+              // Calculate relative position accounting for scroll
+              const x = e.clientX - containerRect.left + previewRef.current.scrollLeft;
+              const y = e.clientY - containerRect.top + previewRef.current.scrollTop;
+
+              // Add new element to store
+              addElement({
+                ...elementData,
+                id: `el-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                x,
+                y,
+                width: 'auto',
+                height: 'auto'
+              });
+            }
+          }}
         >
-          <div className="min-h-full isolate">
+          <div className="min-h-full isolate relative">
+            {/* Render Absolute Elements Layer */}
+            {activePage?.elements && activePage.elements.map(el => (
+              <VisualElementWrapper
+                key={el.id}
+                element={el}
+                isSelected={selectedElementId === el.id}
+                onSelect={() => {
+                  setSelectedElementId(el.id);
+                  setSelectedSectionId(null); // Deselect section
+                }}
+                onChange={(updates) => updateElement(el.id, updates)}
+                onDelete={() => deleteElement(el.id)}
+                scale={1}
+                pages={pages}
+              />
+            ))}
+
             {/* Navbar will now be fixed relative to the preview window */}
             <Navbar
               {...navbar}

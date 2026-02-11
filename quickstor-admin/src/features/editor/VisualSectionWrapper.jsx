@@ -257,7 +257,7 @@ const VisualSectionWrapper = ({
             </div>
 
             {/* Content */}
-            <div style={{ transition: isResizing ? 'none' : 'all 0.2s ease-out', width: '100%', height: height ? '100%' : 'auto', overflow: hasCustomSize ? 'hidden' : 'visible' }}>
+            <div style={{ transition: isResizing ? 'none' : 'all 0.2s ease-out', width: '100%', height: height ? '100%' : 'auto', overflow: 'visible' }}>
                 {children}
             </div>
         </div>

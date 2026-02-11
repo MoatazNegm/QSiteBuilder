@@ -310,7 +310,8 @@ export const ContentProvider = ({ children }) => {
       id: `page-${Date.now()}`,
       title,
       slug: slug.startsWith('/') ? slug : `/${slug}`,
-      sections: []
+      sections: [],
+      elements: [] // New: Support for absolute positioned elements
     };
     setPages(prev => [...prev, newPage]);
     setActivePageId(newPage.id);
@@ -514,6 +515,38 @@ export const ContentProvider = ({ children }) => {
     if (selectedSectionId === id) setSelectedSectionId(null);
   }, [activePageId, selectedSectionId, markDirty]);
 
+  // --- Element Actions (Absolute Positioned) ---
+
+  const addElement = useCallback((element) => {
+    markDirty();
+    setPages(prev => prev.map(page => {
+      if (page.id !== activePageId) return page;
+      const currentElements = page.elements || [];
+      return { ...page, elements: [...currentElements, element] };
+    }));
+  }, [activePageId, markDirty]);
+
+  const updateElement = useCallback((id, updates) => {
+    markDirty();
+    setPages(prev => prev.map(page => {
+      if (page.id !== activePageId) return page;
+      const currentElements = page.elements || [];
+      return {
+        ...page,
+        elements: currentElements.map(el => el.id === id ? { ...el, ...updates } : el)
+      };
+    }));
+  }, [activePageId, markDirty]);
+
+  const deleteElement = useCallback((id) => {
+    markDirty();
+    setPages(prev => prev.map(page => {
+      if (page.id !== activePageId) return page;
+      const currentElements = page.elements || [];
+      return { ...page, elements: currentElements.filter(el => el.id !== id) };
+    }));
+  }, [activePageId, markDirty]);
+
   return (
     <ContentContext.Provider value={{
       // Page State
@@ -541,6 +574,11 @@ export const ContentProvider = ({ children }) => {
       deleteSection,
       moveSection,
       resetPageLayout,
+
+      // Element Actions
+      addElement,
+      updateElement,
+      deleteElement,
 
       // Theme State
       activeTheme,

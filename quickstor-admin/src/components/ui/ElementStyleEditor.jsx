@@ -1,13 +1,139 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Type, Paintbrush, Square, AlignLeft, Move } from 'lucide-react';
+import { X, Type, Paintbrush, Square, AlignLeft, Move, Undo2, Redo2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+
+// Global history map: keyed by element reference, stores { past: [], future: [] }
+const historyMap = new WeakMap();
+
+const MAX_HISTORY = 10;
 
 const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate }) => {
     const popoverRef = useRef(null);
 
     // Extract current styles from element
     const computedStyle = element ? window.getComputedStyle(element) : {};
+
+    // --- Undo / Redo ---
+    const [historyVersion, setHistoryVersion] = useState(0); // triggers re-render on undo/redo
+
+    const getHistory = useCallback(() => {
+        if (!element) return { past: [], future: [] };
+        if (!historyMap.has(element)) {
+            historyMap.set(element, { past: [], future: [] });
+        }
+        return historyMap.get(element);
+    }, [element]);
+
+    // Snapshot the element's current inline styles + computed styles
+    const takeSnapshot = useCallback(() => {
+        if (!element) return;
+        const history = getHistory();
+        const snapshot = {
+            cssText: element.style.cssText,
+            innerHTML: element.innerHTML
+        };
+        history.past.push(snapshot);
+        // Trim to max
+        if (history.past.length > MAX_HISTORY) {
+            history.past.shift();
+        }
+        // Clear future on new change
+        history.future = [];
+        setHistoryVersion(v => v + 1);
+    }, [element, getHistory]);
+
+    // Restore a snapshot to the element
+    const restoreSnapshot = useCallback((snapshot) => {
+        if (!element || !snapshot) return;
+        element.style.cssText = snapshot.cssText;
+        if (snapshot.innerHTML !== undefined) {
+            element.innerHTML = snapshot.innerHTML;
+            setTextContent(element.innerText);
+        }
+        // Re-read computed styles into local state
+        const computed = window.getComputedStyle(element);
+        const bgImage = computed.backgroundImage || '';
+        const hasBgGradient = bgImage.includes('linear-gradient');
+        let bgGFrom = '#3b82f6', bgGTo = '#8b5cf6', bgGDir = 'to right';
+        if (hasBgGradient) {
+            const gradMatch = bgImage.match(/linear-gradient\(([^,]+),\s*([^,]+),\s*([^)]+)\)/);
+            if (gradMatch) {
+                bgGDir = gradMatch[1].trim();
+                bgGFrom = rgbToHex(gradMatch[2].trim()) || '#3b82f6';
+                bgGTo = rgbToHex(gradMatch[3].trim()) || '#8b5cf6';
+            }
+        }
+
+        const webkitBgClip = computed.webkitBackgroundClip || '';
+        const hasTextGradient = webkitBgClip === 'text';
+
+        setStyles({
+            color: rgbToHex(computed.color) || '#000000',
+            backgroundColor: computed.backgroundColor === 'rgba(0, 0, 0, 0)' ? '' : rgbToHex(computed.backgroundColor),
+            opacity: Math.round(parseFloat(computed.opacity) * 100) || 100,
+            borderWidth: parseInt(computed.borderWidth) || 0,
+            borderColor: rgbToHex(computed.borderColor) || '#000000',
+            borderRadius: parseInt(computed.borderRadius) || 0,
+            fontSize: parseInt(computed.fontSize) || 16,
+            fontWeight: computed.fontWeight || '400',
+            fontFamily: computed.fontFamily?.split(',')[0]?.replace(/['\"/]/g, '') || 'inherit',
+            bgGradientEnabled: hasBgGradient && !hasTextGradient,
+            bgGradientFrom: bgGFrom,
+            bgGradientTo: bgGTo,
+            bgGradientDirection: bgGDir,
+            textGradientEnabled: hasTextGradient,
+            textGradientFrom: hasTextGradient ? bgGFrom : '#3b82f6',
+            textGradientTo: hasTextGradient ? bgGTo : '#ec4899',
+            textGradientDirection: hasTextGradient ? bgGDir : 'to right'
+        });
+    }, [element]);
+
+    const handleUndo = useCallback(() => {
+        const history = getHistory();
+        if (history.past.length === 0) return;
+        // Save current state to future
+        history.future.push({
+            cssText: element.style.cssText,
+            innerHTML: element.innerHTML
+        });
+        const prev = history.past.pop();
+        restoreSnapshot(prev);
+        setHistoryVersion(v => v + 1);
+    }, [element, getHistory, restoreSnapshot]);
+
+    const handleRedo = useCallback(() => {
+        const history = getHistory();
+        if (history.future.length === 0) return;
+        // Save current state to past
+        history.past.push({
+            cssText: element.style.cssText,
+            innerHTML: element.innerHTML
+        });
+        const next = history.future.pop();
+        restoreSnapshot(next);
+        setHistoryVersion(v => v + 1);
+    }, [element, getHistory, restoreSnapshot]);
+
+    // Keyboard shortcut: Ctrl+Z / Ctrl+Shift+Z
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    handleRedo();
+                } else {
+                    handleUndo();
+                }
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+                e.preventDefault();
+                handleRedo();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleUndo, handleRedo]);
 
     const [styles, setStyles] = useState({
         color: '',
@@ -18,7 +144,16 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
         borderRadius: '',
         fontSize: '',
         fontWeight: '',
-        fontFamily: ''
+        fontFamily: '',
+        // Gradient fields
+        bgGradientEnabled: false,
+        bgGradientFrom: '#3b82f6',
+        bgGradientTo: '#8b5cf6',
+        bgGradientDirection: 'to right',
+        textGradientEnabled: false,
+        textGradientFrom: '#3b82f6',
+        textGradientTo: '#ec4899',
+        textGradientDirection: 'to right'
     });
 
     const [textContent, setTextContent] = useState('');
@@ -137,12 +272,14 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
     }
 
     const handleChange = (key, value) => {
+        takeSnapshot(); // Save current state before change
         const newStyles = { ...styles, [key]: value };
         setStyles(newStyles);
         onUpdate(newStyles); // Instant Update
     };
 
     const handleTextChange = (e) => {
+        takeSnapshot(); // Save current state before text change
         const newText = e.target.value;
         setTextContent(newText);
         if (onTextUpdate) onTextUpdate(newText); // Instant Text Update
@@ -150,6 +287,7 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
 
     const handleReset = () => {
         if (element) {
+            takeSnapshot(); // Save before reset
             // Reset logic handled by parent or by clearing specific inline styles
             element.style.color = '';
             element.style.backgroundColor = '';
@@ -173,6 +311,10 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
         });
         onUpdate({}); // Clear inline styles
     };
+
+    const history = getHistory();
+    const canUndo = history.past.length > 0;
+    const canRedo = history.future.length > 0;
 
 
     const fontWeightOptions = [
@@ -222,7 +364,33 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                     <Paintbrush size={16} className="text-blue-400" />
                     Style Editor
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                    {/* Undo / Redo Buttons */}
+                    <button
+                        onClick={handleUndo}
+                        disabled={!canUndo}
+                        className={cn(
+                            "p-1 rounded transition-colors relative",
+                            canUndo ? "text-blue-400 hover:text-white hover:bg-gray-700" : "text-gray-600 cursor-not-allowed"
+                        )}
+                        title={`Undo (${history.past.length})`}
+                    >
+                        <Undo2 size={14} />
+                        {canUndo && <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">{history.past.length}</span>}
+                    </button>
+                    <button
+                        onClick={handleRedo}
+                        disabled={!canRedo}
+                        className={cn(
+                            "p-1 rounded transition-colors relative",
+                            canRedo ? "text-blue-400 hover:text-white hover:bg-gray-700" : "text-gray-600 cursor-not-allowed"
+                        )}
+                        title={`Redo (${history.future.length})`}
+                    >
+                        <Redo2 size={14} />
+                        {canRedo && <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold">{history.future.length}</span>}
+                    </button>
+                    <div className="w-px h-3 bg-gray-700 mx-1" />
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium flex items-center gap-1">
                         <Move size={10} /> Drag
                     </span>
@@ -258,9 +426,25 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                     <label className="text-xs font-medium text-gray-400 flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-gradient-to-tr from-pink-500 to-blue-500" /> Color & Background
                     </label>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                            <span className="text-[10px] text-gray-500 block">Text</span>
+
+                    {/* --- Text Color --- */}
+                    <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-gray-500">Text Color</span>
+                            <button
+                                onClick={() => handleChange('textGradientEnabled', !styles.textGradientEnabled)}
+                                className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded-full border transition-colors",
+                                    styles.textGradientEnabled
+                                        ? "bg-purple-500/20 border-purple-500 text-purple-300"
+                                        : "bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300"
+                                )}
+                            >
+                                {styles.textGradientEnabled ? '✦ Gradient' : 'Solid'}
+                            </button>
+                        </div>
+
+                        {!styles.textGradientEnabled ? (
                             <div className="flex items-center gap-2">
                                 <input
                                     type="color"
@@ -275,9 +459,62 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                                     className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
                                 />
                             </div>
+                        ) : (
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                    <input type="color" value={styles.textGradientFrom} onChange={(e) => handleChange('textGradientFrom', e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-gray-600 p-0" />
+                                    <span className="text-gray-600 text-[10px]">→</span>
+                                    <input type="color" value={styles.textGradientTo} onChange={(e) => handleChange('textGradientTo', e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-gray-600 p-0" />
+                                    <select
+                                        value={styles.textGradientDirection}
+                                        onChange={(e) => handleChange('textGradientDirection', e.target.value)}
+                                        className="flex-1 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px]"
+                                    >
+                                        <option value="to right">→</option>
+                                        <option value="to left">←</option>
+                                        <option value="to bottom">↓</option>
+                                        <option value="to top">↑</option>
+                                        <option value="to bottom right">↘</option>
+                                        <option value="to bottom left">↙</option>
+                                        <option value="to top right">↗</option>
+                                        <option value="to top left">↖</option>
+                                    </select>
+                                </div>
+                                {/* Live preview */}
+                                <div className="h-3 rounded-full" style={{ background: `linear-gradient(${styles.textGradientDirection}, ${styles.textGradientFrom}, ${styles.textGradientTo})` }} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- Background --- */}
+                    <div className="space-y-1 mt-2">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-gray-500">Background</span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => handleChange('bgGradientEnabled', !styles.bgGradientEnabled)}
+                                    className={cn(
+                                        "text-[9px] px-1.5 py-0.5 rounded-full border transition-colors",
+                                        styles.bgGradientEnabled
+                                            ? "bg-purple-500/20 border-purple-500 text-purple-300"
+                                            : "bg-gray-800 border-gray-600 text-gray-500 hover:text-gray-300"
+                                    )}
+                                >
+                                    {styles.bgGradientEnabled ? '✦ Gradient' : 'Solid'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        handleChange('backgroundColor', '');
+                                        handleChange('bgGradientEnabled', false);
+                                    }}
+                                    className="text-[9px] text-gray-500 hover:text-white px-1"
+                                >
+                                    Clear
+                                </button>
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <span className="text-[10px] text-gray-500 block">Background</span>
+
+                        {!styles.bgGradientEnabled ? (
                             <div className="flex items-center gap-2">
                                 <input
                                     type="color"
@@ -285,14 +522,39 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                                     onChange={(e) => handleChange('backgroundColor', e.target.value)}
                                     className="w-8 h-8 rounded cursor-pointer border border-gray-600 p-0"
                                 />
-                                <button
-                                    onClick={() => handleChange('backgroundColor', '')}
-                                    className="text-xs text-gray-400 hover:text-white underline"
-                                >
-                                    Clear
-                                </button>
+                                <input
+                                    type="text"
+                                    value={styles.backgroundColor || ''}
+                                    onChange={(e) => handleChange('backgroundColor', e.target.value)}
+                                    placeholder="transparent"
+                                    className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-xs"
+                                />
                             </div>
-                        </div>
+                        ) : (
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                    <input type="color" value={styles.bgGradientFrom} onChange={(e) => handleChange('bgGradientFrom', e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-gray-600 p-0" />
+                                    <span className="text-gray-600 text-[10px]">→</span>
+                                    <input type="color" value={styles.bgGradientTo} onChange={(e) => handleChange('bgGradientTo', e.target.value)} className="w-6 h-6 rounded cursor-pointer border border-gray-600 p-0" />
+                                    <select
+                                        value={styles.bgGradientDirection}
+                                        onChange={(e) => handleChange('bgGradientDirection', e.target.value)}
+                                        className="flex-1 bg-gray-800 border border-gray-600 rounded px-1 py-0.5 text-white text-[10px]"
+                                    >
+                                        <option value="to right">→</option>
+                                        <option value="to left">←</option>
+                                        <option value="to bottom">↓</option>
+                                        <option value="to top">↑</option>
+                                        <option value="to bottom right">↘</option>
+                                        <option value="to bottom left">↙</option>
+                                        <option value="to top right">↗</option>
+                                        <option value="to top left">↖</option>
+                                    </select>
+                                </div>
+                                {/* Live preview */}
+                                <div className="h-3 rounded-full" style={{ background: `linear-gradient(${styles.bgGradientDirection}, ${styles.bgGradientFrom}, ${styles.bgGradientTo})` }} />
+                            </div>
+                        )}
                     </div>
 
                     {/* Opacity Slider */}
