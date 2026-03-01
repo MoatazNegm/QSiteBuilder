@@ -7,66 +7,30 @@ import { db, doc, setDoc, getDoc } from '../firebase';
 const ContentContext = createContext();
 
 export const ContentProvider = ({ children }) => {
-  // Global State - Initialize from LocalStorage or Default
-  const [navbar, setNavbar] = useState(() => {
-    const saved = localStorage.getItem('quickstor_navbar');
-    return saved ? JSON.parse(saved) : (defaultContent.navbar || {});
-  });
+  // Global State - Initialize from Default (will hydrate from Backend)
+  const [navbar, setNavbar] = useState(defaultContent.navbar || {});
+  const [footer, setFooter] = useState(defaultContent.footer || {});
 
-  const [footer, setFooter] = useState(() => {
-    const saved = localStorage.getItem('quickstor_footer');
-    return saved ? JSON.parse(saved) : (defaultContent.footer || {});
-  });
-
-  // Page State - Initialize from LocalStorage or Default
-  const [pages, setPages] = useState(() => {
-    const saved = localStorage.getItem('quickstor_pages');
-    if (saved) return JSON.parse(saved);
-    return [
-      {
-        id: 'home',
-        slug: '/',
-        title: 'Home',
-        sections: defaultContent.sections || []
-      }
-    ];
-  });
+  // Page State - Initialize from Default
+  const [pages, setPages] = useState([{
+    id: 'home',
+    slug: '/',
+    title: 'Home',
+    sections: defaultContent.sections || []
+  }]);
 
   const [activePageId, setActivePageId] = useState('home');
   const [selectedSectionId, setSelectedSectionId] = useState(null);
 
-  // Theme State - Initialize from LocalStorage or Default
-  const [activeTheme, setActiveTheme] = useState(() => {
-    const saved = localStorage.getItem('quickstor_activeTheme');
-    return saved ? JSON.parse(saved) : defaultTheme;
-  });
+  // Theme State
+  const [activeTheme, setActiveTheme] = useState(defaultTheme);
+  const [savedThemes, setSavedThemes] = useState([defaultTheme]);
 
-  const [savedThemes, setSavedThemes] = useState(() => {
-    const saved = localStorage.getItem('quickstor_savedThemes');
-    return saved ? JSON.parse(saved) : [defaultTheme];
-  });
-
-  // Custom Sections Library - Start empty, Firestore is source of truth
+  // Custom Sections Library
   const [customSections, setCustomSections] = useState([]);
 
-  // Custom Elements - Initialize from LocalStorage or Firestore logic
-  const [customElements, setCustomElements] = useState(() => {
-    try {
-      const saved = localStorage.getItem('quickstor_customElements');
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-
-      // Sanitize data (fix bad names from previous bug)
-      return parsed.map(el => ({
-        ...el,
-        name: typeof el.name === 'object' ? 'Recovered Element' : (el.name || 'Unnamed Element')
-      }));
-    } catch (e) {
-      console.error("Failed to load custom elements", e);
-      return [];
-    }
-  });
+  // Custom Elements Library
+  const [customElements, setCustomElements] = useState([]);
 
   // Change Tracking State
   const [stagingSnapshot, setStagingSnapshot] = useState(null); // Deep copy of what's in DB
@@ -86,49 +50,18 @@ export const ContentProvider = ({ children }) => {
           const data = stagingSnap.data();
           setStagingSnapshot(data);
 
-          // Sync pages from Firestore
-          if (data.pages && Array.isArray(data.pages)) {
-            setPages(data.pages);
-            localStorage.setItem('quickstor_pages', JSON.stringify(data.pages));
-          }
-
-          // Sync navbar from Firestore
-          if (data.navbar) {
-            setNavbar(data.navbar);
-            localStorage.setItem('quickstor_navbar', JSON.stringify(data.navbar));
-          }
-
-          // Sync footer from Firestore
-          if (data.footer) {
-            setFooter(data.footer);
-            localStorage.setItem('quickstor_footer', JSON.stringify(data.footer));
-          }
-
-          // Sync savedThemes from Firestore
-          if (data.savedThemes && Array.isArray(data.savedThemes)) {
-            setSavedThemes(data.savedThemes);
-            localStorage.setItem('quickstor_savedThemes', JSON.stringify(data.savedThemes));
-          }
-
-          // Sync active theme
-          if (data.theme) {
-            setActiveTheme(data.theme);
-            localStorage.setItem('quickstor_activeTheme', JSON.stringify(data.theme));
-          }
-
-          // Sync customElements
-          if (data.customElements && Array.isArray(data.customElements)) {
-            setCustomElements(data.customElements);
-            localStorage.setItem('quickstor_customElements', JSON.stringify(data.customElements));
-          }
-
+          if (data.pages && Array.isArray(data.pages)) setPages(data.pages);
+          if (data.navbar) setNavbar(data.navbar);
+          if (data.footer) setFooter(data.footer);
+          if (data.savedThemes && Array.isArray(data.savedThemes)) setSavedThemes(data.savedThemes);
+          if (data.theme) setActiveTheme(data.theme);
+          if (data.customElements && Array.isArray(data.customElements)) setCustomElements(data.customElements);
 
           // Sync custom sections
           const firestoreSections = data.customSections && Array.isArray(data.customSections)
             ? data.customSections
             : [];
           setCustomSections(firestoreSections);
-          localStorage.setItem('quickstor_custom_sections', JSON.stringify(firestoreSections));
         }
 
         // 2. Fetch Live (for comparison only)
@@ -177,15 +110,7 @@ export const ContentProvider = ({ children }) => {
 
   // --- Persistence Actions ---
   const saveContent = useCallback(async () => {
-    // 1. Save locally as backup
-    localStorage.setItem('quickstor_navbar', JSON.stringify(navbar));
-    localStorage.setItem('quickstor_footer', JSON.stringify(footer));
-    localStorage.setItem('quickstor_pages', JSON.stringify(pages));
-    localStorage.setItem('quickstor_activeTheme', JSON.stringify(activeTheme));
-    localStorage.setItem('quickstor_savedThemes', JSON.stringify(savedThemes));
-    localStorage.setItem('quickstor_custom_sections', JSON.stringify(customSections));
-
-    // 2. Publish to Firestore (STAGING)
+    // Publish to Backend API (STAGING)
     try {
       const stagingContentRef = doc(db, 'sites', 'quickstor-staging');
 
@@ -217,7 +142,7 @@ export const ContentProvider = ({ children }) => {
       alert('Failed to publish to staging: ' + error.message);
       return false;
     }
-  }, [navbar, footer, pages, activeTheme, savedThemes, customSections]);
+  }, [navbar, footer, pages, activeTheme, savedThemes, customSections, customElements]);
 
   // --- Staging -> Live Actions ---
 
@@ -293,39 +218,38 @@ export const ContentProvider = ({ children }) => {
   const discardChanges = useCallback(() => {
     if (!confirm('Are you sure you want to discard all unsaved changes over your current session?')) return;
 
-    // Revert logic...
-    // Also reset dirty flag
+    // Reset dirty flag
     setIsDirty(false);
 
-    // ... rest of discard logic (using saved locals)
-    // Actually, deeper revert to STAGING snapshot might be safer if we want "Reset to Saved State"
-    // But keeping existing localStorage revert for now as per previous logic
-    const savedNavbar = localStorage.getItem('quickstor_navbar');
-    setNavbar(savedNavbar ? JSON.parse(savedNavbar) : (defaultContent.navbar || {}));
-
-    const savedFooter = localStorage.getItem('quickstor_footer');
-    setFooter(savedFooter ? JSON.parse(savedFooter) : (defaultContent.footer || {}));
-
-    const savedPages = localStorage.getItem('quickstor_pages');
-    if (savedPages) {
-      setPages(JSON.parse(savedPages));
-    } else {
-      setPages([{
-        id: 'home',
-        slug: '/',
-        title: 'Home',
-        sections: defaultContent.sections || []
-      }]);
-    }
-    setActivePageId('home');
-
-    // Safety: ensure using snapshot if local storage is stale? 
+    // Revert to backend stagingSnapshot
     if (stagingSnapshot) {
       if (stagingSnapshot.navbar) setNavbar(stagingSnapshot.navbar);
+      else setNavbar(defaultContent.navbar || {});
+
       if (stagingSnapshot.footer) setFooter(stagingSnapshot.footer);
+      else setFooter(defaultContent.footer || {});
+
       if (stagingSnapshot.pages) setPages(stagingSnapshot.pages);
-      // ... etc
+      else setPages([{ id: 'home', slug: '/', title: 'Home', sections: defaultContent.sections || [] }]);
+
+      if (stagingSnapshot.theme) setActiveTheme(stagingSnapshot.theme);
+      else setActiveTheme(defaultTheme);
+
+      if (stagingSnapshot.savedThemes) setSavedThemes(stagingSnapshot.savedThemes);
+      if (stagingSnapshot.customSections) setCustomSections(stagingSnapshot.customSections);
+      if (stagingSnapshot.customElements) setCustomElements(stagingSnapshot.customElements);
+    } else {
+      // Complete reset if no snapshot exists
+      setNavbar(defaultContent.navbar || {});
+      setFooter(defaultContent.footer || {});
+      setPages([{ id: 'home', slug: '/', title: 'Home', sections: defaultContent.sections || [] }]);
+      setActiveTheme(defaultTheme);
+      setSavedThemes([defaultTheme]);
+      setCustomSections([]);
+      setCustomElements([]);
     }
+
+    setActivePageId('home');
   }, [stagingSnapshot]);
 
   // --- Page Actions ---
@@ -393,8 +317,6 @@ export const ContentProvider = ({ children }) => {
     };
     const updatedThemes = [...savedThemes, newTheme];
     setSavedThemes(updatedThemes);
-    // Persist immediately
-    localStorage.setItem('quickstor_savedThemes', JSON.stringify(updatedThemes));
     return newTheme;
   }, [activeTheme, savedThemes, markDirty]);
 
@@ -403,20 +325,16 @@ export const ContentProvider = ({ children }) => {
     markDirty();
     const updatedThemes = savedThemes.filter(t => t.id !== themeId);
     setSavedThemes(updatedThemes);
-    // Persist immediately
-    localStorage.setItem('quickstor_savedThemes', JSON.stringify(updatedThemes));
+
     // If deleted theme was active, revert to default
     if (activeTheme.id === themeId) {
       setActiveTheme(defaultTheme);
-      localStorage.setItem('quickstor_activeTheme', JSON.stringify(defaultTheme));
     }
   }, [activeTheme.id, savedThemes, markDirty]);
 
   const applyTheme = useCallback((theme) => {
     markDirty();
     setActiveTheme(theme);
-    // Persist immediately
-    localStorage.setItem('quickstor_activeTheme', JSON.stringify(theme));
   }, [markDirty]);
 
   const updateSection = useCallback((id, newContent) => {
@@ -602,7 +520,6 @@ export const ContentProvider = ({ children }) => {
     };
     const updatedElements = [...customElements, newElement];
     setCustomElements(updatedElements);
-    localStorage.setItem('quickstor_customElements', JSON.stringify(updatedElements));
     return newElement;
   }, [customElements, markDirty]);
 
@@ -610,7 +527,6 @@ export const ContentProvider = ({ children }) => {
     markDirty();
     const updatedElements = customElements.filter(el => el.id !== id);
     setCustomElements(updatedElements);
-    localStorage.setItem('quickstor_customElements', JSON.stringify(updatedElements));
   }, [customElements, markDirty]);
 
   return (

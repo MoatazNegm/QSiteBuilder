@@ -5,7 +5,7 @@ import { useContentStore } from '../../hooks/useContentStore';
 
 // Import Data Source for static elements (Navbar/Footer)
 import { defaultContent } from '../../../../quickstor-frontend/src/data/defaultContent';
-import { applyThemeToDocument } from '../../../../quickstor-frontend/src/utils/themeUtils';
+import { getThemeVariables } from '../../../../quickstor-frontend/src/utils/themeUtils';
 
 // Importing components directly from the frontend project
 import Hero from '../../../../quickstor-frontend/src/components/Hero';
@@ -274,6 +274,47 @@ const LivePreview = ({ isFullscreen }) => {
     }
   }, [styleEditorEnabled, isStylableElement]);
 
+  // Helper to persist manually modified DOM back to store
+  const persistStyleTargetHTML = useCallback((target) => {
+    if (!target) return;
+    const elementWrapper = target.closest('[data-wrapper="true"]');
+    if (elementWrapper) {
+      const id = elementWrapper.getAttribute('data-id');
+      const contentEl = elementWrapper.querySelector('[data-content="true"]');
+      if (contentEl) {
+        updateElement(id, { html: contentEl.innerHTML });
+      }
+    } else {
+      const sectionWrapper = target.closest('[data-section-wrapper="true"]');
+      if (sectionWrapper) {
+        const id = sectionWrapper.getAttribute('data-section-id');
+        const section = sections.find(s => s.id === id);
+        if (section) {
+          // Check if it's a specific field inside a standard section
+          const field = target.getAttribute('data-field') || target.closest('[data-field]')?.getAttribute('data-field');
+
+          if (field && section.type !== 'CUSTOM_HTML') {
+            // Handle standard section field persistence (Nested update)
+            const newContent = JSON.parse(JSON.stringify(section.content));
+            const keys = field.split('.');
+            let current = newContent;
+            for (let i = 0; i < keys.length - 1; i++) {
+              if (!current[keys[i]]) current[keys[i]] = {};
+              current = current[keys[i]];
+            }
+            current[keys[keys.length - 1]] = target.innerHTML;
+            updateSection(id, newContent);
+          } else if (section.type === 'CUSTOM_HTML') {
+            const innerDiv = sectionWrapper.querySelector('.custom-section-wrapper > div:last-child');
+            if (innerDiv) {
+              updateSection(id, { ...section.content, html: innerDiv.innerHTML });
+            }
+          }
+        }
+      }
+    }
+  }, [updateElement, updateSection, sections]);
+
   // Handle style updates from the editor
   const handleStyleUpdate = useCallback((newStyles) => {
     if (!styleEditorTarget) return;
@@ -346,7 +387,10 @@ const LivePreview = ({ isFullscreen }) => {
 
     // Force a repaint by reading a layout property
     void el.offsetHeight;
-  }, [styleEditorTarget]);
+
+    // Persist to store
+    persistStyleTargetHTML(el);
+  }, [styleEditorTarget, persistStyleTargetHTML]);
 
   const handleTextUpdate = useCallback((newText) => {
     if (!styleEditorTarget) return;
@@ -385,15 +429,49 @@ const LivePreview = ({ isFullscreen }) => {
       };
 
       updateTextPreservingStructure(styleEditorTarget, newText);
-    }
-  }, [styleEditorTarget, globalSnapshot]);
 
-  // Apply theme to the preview container whenever it changes
-  useEffect(() => {
-    if (previewRef.current && activeTheme) {
-      applyThemeToDocument(activeTheme, previewRef.current);
+      // Persist to store
+      persistStyleTargetHTML(styleEditorTarget);
     }
-  }, [activeTheme]);
+  }, [styleEditorTarget, globalSnapshot, persistStyleTargetHTML]);
+
+  // Auto-generate a scoped CSS block to enforce theme variables inside the preview container
+  const themeCssVariables = React.useMemo(() => {
+    if (!activeTheme) return '';
+    const vars = getThemeVariables(activeTheme);
+    const cssString = Object.entries(vars)
+      .map(([key, value]) => `${key}: ${value} !important;`)
+      .join('\n      ');
+
+    // Also inject specific active page styles at the root of the container
+    const pageBg = activePage?.styles?.backgroundColor || 'var(--color-background)';
+    const pageText = activePage?.styles?.color || 'var(--color-text)';
+
+    return `
+    .live-preview-container {
+      ${cssString}
+      --color-background: ${pageBg} !important;
+      --color-text: ${pageText} !important;
+      background-color: var(--color-background) !important;
+      color: var(--color-text) !important;
+    }
+    
+    .live-preview-container * {
+      /* Ensure text colors correctly inherit unless overridden */
+    }
+
+    /* Emulate frontend index.css global link styles */
+    .live-preview-container a {
+      font-weight: 500;
+      color: var(--color-primary);
+      text-decoration: inherit;
+    }
+    
+    .live-preview-container a:hover {
+      color: var(--color-secondary);
+    }
+    `;
+  }, [activeTheme, activePage?.styles]);
 
   // Prevent link/button navigation in preview (allows styling instead)
   useEffect(() => {
@@ -533,12 +611,7 @@ const LivePreview = ({ isFullscreen }) => {
       <div className="flex-1 relative w-full h-full" style={{ transform: 'translate(0)' }}>
         <div
           ref={previewRef}
-          className="absolute inset-0 overflow-y-auto bg-theme-background transition-colors duration-300"
-          style={activePage?.styles ? {
-            backgroundColor: activePage.styles.backgroundColor,
-            color: activePage.styles.color,
-            ...activePage.styles
-          } : {}}
+          className="live-preview-container absolute inset-0 overflow-y-auto bg-theme-background transition-colors duration-300"
           onMouseOverCapture={handlePreviewMouseOver}
           onMouseOutCapture={handlePreviewMouseOut}
           onClickCapture={handlePreviewClick}
@@ -560,18 +633,37 @@ const LivePreview = ({ isFullscreen }) => {
               const x = e.clientX - containerRect.left + previewRef.current.scrollLeft;
               const y = e.clientY - containerRect.top + previewRef.current.scrollTop;
 
+              // Sanitize legacy custom elements that might have bad positioning classes
+              let cleanHtml = elementData.html;
+              if (elementData.category === 'custom' || elementData.tags?.includes('ai')) {
+                try {
+                  const parser = new DOMParser();
+                  const doc = parser.parseFromString(cleanHtml, 'text/html');
+                  const rootEl = doc.body.firstElementChild;
+                  if (rootEl) {
+                    rootEl.classList.remove('absolute', 'fixed', 'relative', 'static', 'sticky');
+                    rootEl.className = rootEl.className.replace(/\bz-\[?-?\d+\]?\b/g, '').replace(/\s+/g, ' ').trim();
+                    cleanHtml = rootEl.outerHTML;
+                  }
+                } catch (e) { console.error(e); }
+              }
+
               // Add new element to store
               addElement({
                 ...elementData,
+                html: cleanHtml,
                 id: `el-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                 x,
                 y,
                 width: 'auto',
-                height: 'auto'
+                height: 'auto',
+                zIndex: 50 // Keep elements above sections by default
               });
             }
           }}
         >
+          <style>{themeCssVariables}</style>
+
           <div className="min-h-full isolate relative">
             {/* Render Absolute Elements Layer */}
             {activePage?.elements && activePage.elements.map(el => (
@@ -604,6 +696,7 @@ const LivePreview = ({ isFullscreen }) => {
                 return (
                   <VisualSectionWrapper
                     key={section.id}
+                    id={section.id}
                     isSelected={selectedSectionId === section.id}
                     onSelect={() => setSelectedSectionId(section.id)}
                     onDelete={() => deleteSection(section.id)}

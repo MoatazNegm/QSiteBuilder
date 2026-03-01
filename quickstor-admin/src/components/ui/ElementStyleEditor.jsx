@@ -165,14 +165,14 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
 
         try {
             // Upload to backend
-            const res = await fetch('http://localhost:3000/api/upload', {
+            const res = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData
             });
             const data = await res.json();
 
             if (data.url) {
-                const fullUrl = `http://localhost:3000${data.url}`;
+                const fullUrl = data.url;
                 setImageSrc(fullUrl);
 
                 takeSnapshot();
@@ -371,6 +371,25 @@ const ElementStyleEditor = ({ element, position, onClose, onUpdate, onTextUpdate
                 <span className="text-white font-semibold text-sm flex items-center gap-2">
                     <Paintbrush size={16} className="text-blue-400" />
                     Style Editor
+                    {element && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/50 rounded text-[10px] text-blue-300 font-mono uppercase tracking-tighter">
+                            {(() => {
+                                // 1. Check data-element-name (Custom elements)
+                                const wrapper = element.closest('[data-element-name]');
+                                if (wrapper) {
+                                    const name = wrapper.getAttribute('data-element-name');
+                                    if (name) return name;
+                                }
+
+                                // 2. Check data-field (Standard section fields)
+                                const field = element.getAttribute('data-field') || element.closest('[data-field]')?.getAttribute('data-field');
+                                if (field) return field;
+
+                                // 3. Fallback to tag name
+                                return element.tagName;
+                            })()}
+                        </span>
+                    )}
                 </span>
                 <div className="flex items-center gap-1">
                     {/* Undo / Redo Buttons */}

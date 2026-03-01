@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Save, CheckCircle, AlertCircle, Download, Upload, Loader2, Database } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { getAIConfig, saveAIConfig } from '../utils/aiService';
+import { getAIConfig, saveAIConfigToMemory, fetchAIConfig } from '../utils/aiService';
 import { promptService } from '../utils/promptService';
 import { useContentStore } from '../hooks/useContentStore';
 
@@ -33,22 +33,21 @@ const Settings = () => {
     const [isImporting, setIsImporting] = useState(false);
 
     useEffect(() => {
-        // Load config on mount
-        const savedConfig = getAIConfig();
-        setConfig(savedConfig);
+        // Load config on mount from Backend asynchronously
+        const loadSettings = async () => {
+            const serverConfig = await fetchAIConfig();
+            if (serverConfig) setConfig(serverConfig);
 
-        // Ensure prompt service is ready, then load prompts
-        const loadPrompt = async () => {
+            // Ensure prompt service is ready, then load prompts
             await promptService.init();
 
             // 1. Load General System Prompt
-            const customSystem = localStorage.getItem('quickstor_system_prompt_custom');
-            setSystemPrompt(customSystem || promptService.get('system.default'));
+            setSystemPrompt(promptService.getSystemPrompt());
 
             // 2. Load Content Filling Prompt
             setFillingPrompt(promptService.getContentFillingPrompt());
         };
-        loadPrompt();
+        loadSettings();
     }, []);
 
     const handleProviderChange = (value) => {
@@ -78,32 +77,36 @@ const Settings = () => {
         }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         try {
-            saveAIConfig(config);
+            // Update Memory first
+            saveAIConfigToMemory(config);
+            promptService.setCustomSystemPrompt(systemPrompt && systemPrompt !== promptService.get('system.default') ? systemPrompt : null);
+            promptService.setCustomFillingPrompt(fillingPrompt);
 
-            // 1. Save General System Prompt
-            if (systemPrompt && systemPrompt !== promptService.get('system.default')) {
-                localStorage.setItem('quickstor_system_prompt_custom', systemPrompt);
-            } else {
-                localStorage.removeItem('quickstor_system_prompt_custom');
-            }
+            // Construct payload for Backend
+            const payload = {
+                aiConfig: config,
+                systemPrompt: systemPrompt && systemPrompt !== promptService.get('system.default') ? systemPrompt : null,
+                fillingPrompt: fillingPrompt || null,
+                // Do not override system defaults array, purely user overrides
+            };
 
-            // 2. Save Custom Content Filling Prompt
-            // We compare essentially against the default agent prompt logic. 
-            // Since getContentFillingPrompt returns the default if custom is missing, 
-            // we can just check if it's diff from default or just save if not empty.
-            if (fillingPrompt) {
-                localStorage.setItem('quickstor_content_filling_prompt', fillingPrompt);
-            } else {
-                localStorage.removeItem('quickstor_content_filling_prompt');
-            }
+            // Post to Server
+            const response = await fetch('/api/data/settings/global', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error('Failed to save settings to server');
 
             setStatus({ type: 'success', message: 'Settings saved successfully' });
 
             // Clear status after 3 seconds
             setTimeout(() => setStatus({ type: '', message: '' }), 3000);
         } catch (error) {
+            console.error(error);
             setStatus({ type: 'error', message: 'Failed to save settings' });
         }
     };
@@ -130,17 +133,10 @@ const Settings = () => {
                 customElements
             };
 
-            // 3. Gather Settings (Local Configuration)
-            const settings = {
-                // AI Configuration
-                aiConfig: localStorage.getItem('quickstor_ai_config'),
-                // Custom System Prompt
-                systemPrompt: localStorage.getItem('quickstor_system_prompt_custom'),
-                // Custom Filling Prompt
-                fillingPrompt: localStorage.getItem('quickstor_content_filling_prompt'),
-                // Cached prompts
-                prompts: localStorage.getItem('quickstor_prompts'),
-            };
+            // 3. We no longer rely on explicit localStorage for settings.
+            // The /api/data?assets=true call ALREADY includes `settings/global`.
+            // We will just leave `settings` undefined here to let it inherit naturally.
+            const settings = {};
 
             // 4. Create Comprehensive Backup Bundle
             const backup = {
@@ -203,21 +199,23 @@ const Settings = () => {
                 throw new Error("Invalid backup format: missing backend data");
             }
 
-            // --- 1. Restore Settings (AI, Prompts, etc.) ---
+            // --- 1. Restore Settings (If legacy v2 backup, else merged into newBackendData implicitly) ---
             if (backup.settings) {
-                if (backup.settings.aiConfig) localStorage.setItem('quickstor_ai_config', backup.settings.aiConfig);
-                if (backup.settings.systemPrompt) localStorage.setItem('quickstor_system_prompt_custom', backup.settings.systemPrompt);
-                if (backup.settings.fillingPrompt) localStorage.setItem('quickstor_content_filling_prompt', backup.settings.fillingPrompt);
-                if (backup.settings.prompts) localStorage.setItem('quickstor_prompts', backup.settings.prompts);
-
-                // Backward compatibility for v2.0 backups
+                // We map legacy backup.settings (which were stored in local storage format)
+                // directly into the new 'settings/global' object in the backend data.
+                newBackendData['settings/global'] = {
+                    aiConfig: backup.settings.aiConfig ? JSON.parse(backup.settings.aiConfig) : undefined,
+                    systemPrompt: backup.settings.systemPrompt,
+                    fillingPrompt: backup.settings.fillingPrompt,
+                    prompts: backup.settings.prompts ? JSON.parse(backup.settings.prompts) : undefined
+                };
             } else if (backup.localConfig) {
-                Object.entries(backup.localConfig).forEach(([key, value]) => {
-                    // Only restore settings keys, ignore content keys (quickstor_pages etc) as we handle them globally
-                    if (['quickstor_ai_config', 'quickstor_system_prompt_custom', 'quickstor_content_filling_prompt', 'quickstor_prompts'].includes(key)) {
-                        if (value) localStorage.setItem(key, value);
-                    }
-                });
+                newBackendData['settings/global'] = {
+                    aiConfig: backup.localConfig.quickstor_ai_config ? JSON.parse(backup.localConfig.quickstor_ai_config) : undefined,
+                    systemPrompt: backup.localConfig.quickstor_system_prompt_custom,
+                    fillingPrompt: backup.localConfig.quickstor_content_filling_prompt,
+                    prompts: backup.localConfig.quickstor_prompts ? JSON.parse(backup.localConfig.quickstor_prompts) : undefined
+                };
             }
 
             // --- 2. Construct New Backend Data ---
@@ -308,23 +306,16 @@ const Settings = () => {
     const handleResetPrompt = async (type) => {
         if (type === 'filling') {
             if (confirm('Reset agent prompt to default?')) {
-                localStorage.removeItem('quickstor_content_filling_prompt');
-                // Force re-read default from service (re-instantiate logic)
-                // Just manually setting the hardcoded string for immediate UI update is safer or re-call service
-                // To avoid duplication, we will clear state and let reload or manual update handle it.
-                // Actually, PromptService doesn't have a 'getDefaultFillingPrompt' public method, 
-                // so we rely on getContentFillingPrompt falling back.
-
-                // Hack: Temporarily remove, call get, set state
-                const defaultPrompt = promptService.getContentFillingPrompt();
-                setFillingPrompt(defaultPrompt);
+                promptService.setCustomFillingPrompt(null);
+                setFillingPrompt(promptService.getContentFillingPrompt());
+                handleSave(); // Trigger server save
             }
         } else {
             if (confirm('Reset system prompt to default?')) {
+                promptService.setCustomSystemPrompt(null);
                 const defaults = await promptService.resetToDefaults();
-                const defaultPrompt = defaults?.system?.default || "";
-                setSystemPrompt(defaultPrompt);
-                localStorage.removeItem('quickstor_system_prompt_custom');
+                setSystemPrompt(defaults?.system?.default || "");
+                handleSave(); // Trigger server save
             }
         }
     };

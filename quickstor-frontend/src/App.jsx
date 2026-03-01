@@ -51,14 +51,14 @@ function PageContent({ pages, navbar, footer }) {
   const pageToRender = currentPage || pages.find(p => p.id === 'home') || pages[0];
 
   return (
-    <div className="bg-[#050505] min-h-screen text-white font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen font-sans selection:bg-blue-600 selection:text-white" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text)', ...(pageToRender?.styles || {}) }}>
       <StagingBanner />
 
       {/* Fixed Header */}
       <Navbar {...navbar} className={IS_STAGING ? 'top-12' : ''} />
 
       {/* Dynamic Sections Loop - Show 404 message if no page found and no fallback */}
-      <div className={IS_STAGING ? 'pt-36 md:pt-48' : 'pt-20 md:pt-28'}>
+      <div className={IS_STAGING ? 'pt-12' : ''}>
         {pageToRender ? (
           <main className="flex-grow flex flex-col relative w-full overflow-x-hidden">
             {/* Absolute Elements Layer */}
@@ -137,8 +137,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="bg-[#050505] min-h-screen flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)', color: 'var(--color-text)' }}>
+        <div className="text-lg">Loading...</div>
       </div>
     );
   }

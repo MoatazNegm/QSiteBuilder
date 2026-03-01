@@ -4,23 +4,16 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { GripVertical, Trash2, Plus, ChevronDown, BarChart2, Grid, Sparkles, Layout, Check } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../utils/cn';
-import { getCustomSections } from '../../utils/sectionGeneratorService';
 
 const SectionList = () => {
   const {
-    sections, selectedSectionId, setSelectedSectionId, reorderSections, deleteSection, addSection
+    sections, selectedSectionId, setSelectedSectionId, reorderSections, deleteSection, addSection, customSections
   } = useContentStore();
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
-  const [customSections, setCustomSections] = useState([]);
 
   // Page creation state
   const [isCreatingPage, setIsCreatingPage] = useState(false);
   const [newPageTitle, setNewPageTitle] = useState('');
-
-  // Load custom sections from localStorage
-  useEffect(() => {
-    setCustomSections(getCustomSections());
-  }, [isAddMenuOpen]); // Refresh when menu opens
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;

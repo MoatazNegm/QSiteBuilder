@@ -9,11 +9,20 @@ const FrozenElementWrapper = ({
     const navigate = useNavigate();
     const contentRef = useRef(null);
     const [isHovered, setIsHovered] = useState(false);
+    const [naturalSize, setNaturalSize] = useState(null);
 
-    // Render content
+    // Render content and measure natural size
     useEffect(() => {
         if (contentRef.current) {
             contentRef.current.innerHTML = element.html;
+
+            // Measure the natural (intrinsic) size after the HTML renders
+            requestAnimationFrame(() => {
+                if (contentRef.current) {
+                    const rect = contentRef.current.getBoundingClientRect();
+                    setNaturalSize({ width: rect.width, height: rect.height });
+                }
+            });
         }
     }, [element.html]);
 
@@ -38,6 +47,26 @@ const FrozenElementWrapper = ({
 
     const hasLink = !!element.link;
 
+    // Compute content scaling (same logic as admin editor's VisualElementWrapper)
+    // When user resizes an element, we scale the content visually using CSS transform
+    const computeContentTransform = () => {
+        if (!naturalSize ||
+            !element.width || element.width === 'auto' ||
+            !element.height || element.height === 'auto') {
+            return { transform: 'none', width: 'auto', height: 'auto' };
+        }
+        const scaleX = element.width / naturalSize.width;
+        const scaleY = element.height / naturalSize.height;
+        return {
+            transform: `scale(${scaleX}, ${scaleY})`,
+            transformOrigin: 'top left',
+            width: naturalSize.width,
+            height: naturalSize.height
+        };
+    };
+
+    const contentStyle = computeContentTransform();
+
     return (
         <div
             className={cn(
@@ -49,8 +78,9 @@ const FrozenElementWrapper = ({
                 top: element.y,
                 width: element.width || 'auto',
                 height: element.height || 'auto',
+                overflow: 'hidden',
                 transform: `rotate(${element.rotation || 0}deg)`,
-                zIndex: 50 // Ensure it's above sections
+                zIndex: element.zIndex || 50
             }}
             onClick={hasLink ? handleLinkClick : undefined}
             onMouseEnter={() => setIsHovered(true)}
@@ -59,9 +89,8 @@ const FrozenElementWrapper = ({
             <div
                 ref={contentRef}
                 style={{
-                    width: '100%',
-                    height: '100%',
-                    pointerEvents: hasLink ? 'auto' : 'none' // Only catch clicks if linked
+                    ...contentStyle,
+                    pointerEvents: hasLink ? 'auto' : 'none'
                 }}
             />
         </div>

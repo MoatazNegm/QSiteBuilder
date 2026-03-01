@@ -19,7 +19,8 @@ const VisualSectionWrapper = ({
     onPositionChange,
     width,
     height,
-    onSizeChange
+    onSizeChange,
+    id // Add id prop
 }) => {
     const wrapperRef = useRef(null);
     const currentScaleRef = useRef(scale);
@@ -117,11 +118,14 @@ const VisualSectionWrapper = ({
                 !isDragging && !isResizing && "transition-all duration-200"
             )}
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
+            data-section-wrapper="true"
+            data-section-id={id}
+            data-element-name={label || 'Section'}
             style={{
                 zoom: scale,
                 transform: `translate(${x}px, ${y}px)`,
                 position: 'relative',
-                zIndex: isDragging || isResizing ? 50 : (isSelected ? 40 : 1),
+                zIndex: isDragging || isResizing ? 45 : (isSelected ? 30 : 1),
                 width: width ? `${width}px` : '100%',
                 height: height ? `${height}px` : 'auto',
                 boxSizing: 'border-box',

@@ -7,6 +7,31 @@ import { callGeminiAPI, callGeminiAPIStream, callGeminiAPIWithHistoryStream, cal
 
 const OPENAI_DEFAULT_URL = 'https://api.openai.com/v1';
 
+// --- In-Memory Config Cache (Replaces LocalStorage) ---
+let aiConfigCache = {
+    provider: 'gemini', // 'gemini' | 'openai'
+    openai: {
+        apiKey: '',
+        baseUrl: OPENAI_DEFAULT_URL,
+        model: 'gpt-4o'
+    }
+};
+
+export const fetchAIConfig = async () => {
+    try {
+        const response = await fetch('/api/data/settings/global');
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.aiConfig) {
+                aiConfigCache = data.aiConfig;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch AI Config from backend:', error);
+    }
+    return aiConfigCache;
+};
+
 // --- Token Estimation & Context Management ---
 
 /**
@@ -332,15 +357,7 @@ async function callOpenAIWithHistoryStream(messages, onChunk, config) {
 // --- Main Service Export ---
 
 export const getAIConfig = () => {
-    return JSON.parse(localStorage.getItem('quickstor_ai_config') || JSON.stringify({
-        provider: 'gemini', // 'gemini' | 'openai'
-        openai: {
-            apiKey: '',
-            baseUrl: 'https://api.openai.com/v1',
-            model: 'gpt-4o'
-        }
-        // Gemini uses env var by default, but could extend here
-    }));
+    return aiConfigCache;
 };
 
 export const getProviderInfo = () => {
@@ -351,8 +368,8 @@ export const getProviderInfo = () => {
     return { name: 'Google Gemini', model: 'Gemini Pro', icon: 'Sparkles' };
 };
 
-export const saveAIConfig = (config) => {
-    localStorage.setItem('quickstor_ai_config', JSON.stringify(config));
+export const saveAIConfigToMemory = (config) => {
+    aiConfigCache = config;
 };
 
 export const AIService = {
@@ -506,6 +523,7 @@ Your task is to generate a single HTML element based on the user's description.
 - Example: { "html": "<button class='...'>Click me</button>" }
 - Do not wrap the JSON in markdown code blocks. Just return the raw JSON string.
 - The HTML should be a single root element (e.g. <button>...</button>, <div class="card">...</div>).
+- CRITICAL: DO NOT use any positioning classes (absolute, fixed, relative, static) or any z-index classes (z-10, z-50, z-auto, etc) in your HTML. The element will be rendered inside a draggable wrapper that strictly controls its position and depth. Using these classes will break the builder's layout engine.
 - Ensure high-quality, modern design.`;
 
         const finalPrompt = `${systemPrompt}\n\n${code ? `Improve/Modify this code based on description: "${prompt}"\n\nCODE:\n${code}` : `Create an element: "${prompt}"`}`;

@@ -143,41 +143,5 @@ Respond with a JSON object containing the COMPLETE updated "html", "schema", and
     }
 }
 
-/**
- * Save a generated section to local storage library
- */
-export function saveToLibrary(section) {
-    const library = JSON.parse(localStorage.getItem('quickstor_custom_sections') || '[]');
-
-    const newSection = {
-        id: `custom-${Date.now()}`,
-        name: section.name || 'Custom Section',
-        type: 'CUSTOM_HTML',
-        html: section.html,
-        schema: section.schema || [],
-        defaultContent: section.defaultContent || {},
-        prompt: section.prompt,
-        createdAt: new Date().toISOString()
-    };
-
-    library.push(newSection);
-    localStorage.setItem('quickstor_custom_sections', JSON.stringify(library));
-
-    return newSection;
-}
-
-/**
- * Get all custom sections from library
- */
-export function getCustomSections() {
-    return JSON.parse(localStorage.getItem('quickstor_custom_sections') || '[]');
-}
-
-/**
- * Delete a custom section from library
- */
-export function deleteFromLibrary(sectionId) {
-    const library = getCustomSections();
-    const filtered = library.filter(s => s.id !== sectionId);
-    localStorage.setItem('quickstor_custom_sections', JSON.stringify(filtered));
-}
+// Removed saveToLibrary, getCustomSections, and deleteFromLibrary
+// Custom sections are now managed exclusively via useContentStore and the backend API

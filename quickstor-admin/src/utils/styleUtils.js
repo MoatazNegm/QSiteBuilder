@@ -6,23 +6,14 @@
  */
 export const rgbToHex = (rgb) => {
     if (!rgb || rgb === 'transparent' || rgb === 'rgba(0, 0, 0, 0)') return '';
-
-    // Check if already hex
     if (rgb.startsWith('#')) return rgb;
 
-    // Handle names like 'red', 'blue' - minimal support or let browser handle it by returning as is?
-    // Browser computed styles are usually rgb().
+    const match = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return '';
 
-    const sep = rgb.indexOf(',') > -1 ? ',' : ' ';
-    const rgbValues = rgb.substr(4).split(')')[0].split(sep);
-
-    let r = (+rgbValues[0]).toString(16),
-        g = (+rgbValues[1]).toString(16),
-        b = (+rgbValues[2]).toString(16);
-
-    if (r.length === 1) r = "0" + r;
-    if (g.length === 1) g = "0" + g;
-    if (b.length === 1) b = "0" + b;
+    const r = (+match[1]).toString(16).padStart(2, '0');
+    const g = (+match[2]).toString(16).padStart(2, '0');
+    const b = (+match[3]).toString(16).padStart(2, '0');
 
     return "#" + r + g + b;
 };

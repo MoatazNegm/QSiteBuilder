@@ -19,6 +19,17 @@ const VisualElementWrapper = ({
     const [position, setPosition] = useState({ x: element.x || 0, y: element.y || 0 });
     const [size, setSize] = useState({ width: element.width, height: element.height });
     const [rotation, setRotation] = useState(element.rotation || 0);
+
+    // Refs that always point to the LATEST state — used by event handlers
+    // to avoid stale closures when mouseup fires after the handler was attached at mousedown.
+    const positionRef = useRef(position);
+    const sizeRef = useRef(size);
+    const rotationRef = useRef(rotation);
+    const elementRef = useRef(element);
+    useEffect(() => { positionRef.current = position; }, [position]);
+    useEffect(() => { sizeRef.current = size; }, [size]);
+    useEffect(() => { rotationRef.current = rotation; }, [rotation]);
+    useEffect(() => { elementRef.current = element; }, [element]);
     const [isDoomed, setIsDoomed] = useState(false); // For delete animation
     const [isEditing, setIsEditing] = useState(false); // For inline text editing
     const [showLinkPanel, setShowLinkPanel] = useState(false);
@@ -93,8 +104,9 @@ const VisualElementWrapper = ({
         setIsDragging(false);
         document.removeEventListener('mousemove', handleDragMove);
         document.removeEventListener('mouseup', handleDragEnd);
-        onChange({ ...element, x: position.x, y: position.y });
-    }, [position, element, onChange]);
+        // Use refs to read the LATEST values, not the stale closure-captured ones
+        onChange({ ...elementRef.current, x: positionRef.current.x, y: positionRef.current.y });
+    }, [onChange]);
 
     // --- Resize Logic ---
     const handleResizeStart = useCallback((mode) => (e) => {
@@ -152,13 +164,14 @@ const VisualElementWrapper = ({
         resizeModeRef.current = null;
         document.removeEventListener('mousemove', handleResizeMove);
         document.removeEventListener('mouseup', handleResizeEnd);
+        // Use refs to read the LATEST values, not the stale closure-captured ones
         onChange({
-            ...element,
-            x: position.x, y: position.y,
-            width: size.width, height: size.height,
-            rotation
+            ...elementRef.current,
+            x: positionRef.current.x, y: positionRef.current.y,
+            width: sizeRef.current.width, height: sizeRef.current.height,
+            rotation: rotationRef.current
         });
-    }, [position, size, rotation, element, onChange]);
+    }, [onChange]);
 
     // --- Rotation Logic ---
     const handleRotateStart = useCallback((e) => {
@@ -202,8 +215,9 @@ const VisualElementWrapper = ({
         setIsRotating(false);
         document.removeEventListener('mousemove', handleRotateMove);
         document.removeEventListener('mouseup', handleRotateEnd);
-        onChange({ ...element, rotation });
-    }, [rotation, element, onChange]);
+        // Use ref to read the LATEST rotation value
+        onChange({ ...elementRef.current, rotation: rotationRef.current });
+    }, [onChange]);
 
     const handleDelete = (e) => {
         e.stopPropagation();
@@ -269,7 +283,6 @@ const VisualElementWrapper = ({
             ref={wrapperRef}
             className={cn(
                 "absolute group select-none",
-                isSelected ? "z-50" : "z-10 hover:z-40",
                 isDoomed && "scale-0 opacity-0 transition-all duration-200"
             )}
             style={{
@@ -278,9 +291,12 @@ const VisualElementWrapper = ({
                 width: size.width || 'auto',
                 height: size.height || 'auto',
                 overflow: 'visible',
-                transform: `rotate(${rotation}deg)`
+                transform: `rotate(${rotation}deg)`,
+                zIndex: (isDragging || isResizing || isRotating) ? (element.zIndex || 50) + 100 : (element.zIndex || 50)
             }}
             data-wrapper="true"
+            data-id={element.id}
+            data-element-name={element.name || element.type || 'Custom Element'}
             onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
@@ -301,6 +317,7 @@ const VisualElementWrapper = ({
                 {/* Render HTML Content - use transform scaling */}
                 <div
                     ref={contentRef}
+                    data-content="true"
                     contentEditable={isEditing}
                     suppressContentEditableWarning={true}
                     onBlur={isEditing ? handleEditBlur : undefined}
@@ -320,13 +337,56 @@ const VisualElementWrapper = ({
 
             {/* --- Controls --- */}
 
-            {/* Move Handle (Top Left) */}
-            {(isSelected || (!isDragging && !isRotating)) && (
+            {/* Top Toolbar (Move + Layering + Delete) */}
+            {isSelected && (
                 <div
-                    className={cn(
-                        "absolute -top-6 left-0 bg-blue-500 text-white rounded px-1.5 py-0.5 text-xs flex items-center gap-1 cursor-grab active:cursor-grabbing shadow-sm transition-opacity",
-                        isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                    )}
+                    className="absolute -top-8 left-0 flex items-center bg-white border border-gray-200 rounded-md shadow-sm z-50 overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
+                    data-no-style="true"
+                >
+                    <div
+                        className="px-2 py-1 flex items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-gray-50 text-gray-700 text-xs border-r border-gray-200"
+                        onMouseDown={handleDragStart}
+                        title="Move Element"
+                    >
+                        <GripVertical size={14} className="text-gray-400" />
+                        <span className="font-semibold px-1">Move</span>
+                    </div>
+
+                    <div className="flex items-center">
+                        <button
+                            onClick={() => onChange({ ...element, zIndex: (element.zIndex || 50) + 1 })}
+                            className="p-1.5 hover:bg-gray-100 text-gray-600 transition-colors border-r border-gray-200"
+                            title="Bring Forward (Z-Index +1)"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 19 12 5 5 12 12 5 19 12" /></svg>
+                        </button>
+                        <div className="px-1.5 text-[10px] font-mono text-gray-400 border-r border-gray-200 bg-gray-50 flex items-center justify-center min-w-[28px]">
+                            {element.zIndex || 50}
+                        </div>
+                        <button
+                            onClick={() => onChange({ ...element, zIndex: Math.max(0, (element.zIndex || 50) - 1) })}
+                            className="p-1.5 hover:bg-gray-100 text-gray-600 transition-colors border-r border-gray-200"
+                            title="Send Backward (Z-Index -1)"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 5 12 19 19 12 12 19 5 12" /></svg>
+                        </button>
+                    </div>
+
+                    <button
+                        className="p-1.5 hover:bg-red-50 text-red-500 hover:text-red-600 transition-colors"
+                        onClick={handleDelete}
+                        title="Delete Element"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            )}
+
+            {/* Move Handle (Top Left - Fallback for unselected hover) */}
+            {!isSelected && !isDragging && !isRotating && (
+                <div
+                    className="absolute -top-6 left-0 bg-blue-500 text-white rounded px-1.5 py-0.5 text-xs flex items-center gap-1 cursor-grab active:cursor-grabbing shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                     onMouseDown={handleDragStart}
                     data-no-style="true"
                 >
@@ -338,7 +398,7 @@ const VisualElementWrapper = ({
             {/* Rotation Handle (Top Center Stick) */}
             {isSelected && (
                 <div
-                    className="absolute -top-8 left-1/2 -translate-x-1/2 flex flex-col items-center group/rotate"
+                    className="absolute -top-[3.5rem] left-1/2 -translate-x-1/2 flex flex-col items-center group/rotate z-40"
                     onMouseDown={handleRotateStart}
                     data-no-style="true"
                 >
@@ -346,18 +406,6 @@ const VisualElementWrapper = ({
                         <RotateCw size={10} />
                     </div>
                     <div className="w-px h-3 bg-blue-500"></div>
-                </div>
-            )}
-
-            {/* Delete Handle (Top Right) */}
-            {isSelected && (
-                <div
-                    className="absolute -top-6 -right-2 bg-white text-red-500 border border-gray-200 rounded-full p-1 cursor-pointer hover:bg-red-50 shadow-sm transition-transform hover:scale-110"
-                    onClick={handleDelete}
-                    title="Delete Element"
-                    data-no-style="true"
-                >
-                    <Trash2 size={12} />
                 </div>
             )}
 

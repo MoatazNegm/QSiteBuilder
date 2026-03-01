@@ -9,43 +9,44 @@ class PromptService {
     constructor() {
         this.prompts = null;
         this.initializationPromise = null;
+        this.customSystemPrompt = null;
+        this.customFillingPrompt = null;
     }
 
     /**
-     * Initialize the service by loading prompts from localStorage or fetching from public/prompts.json
+     * Initialize the service by fetching global settings and defaults
      */
     async init() {
         if (this.initializationPromise) return this.initializationPromise;
 
         this.initializationPromise = (async () => {
             try {
-                // 1. Try to load from LocalStorage first (User customizations)
-                const stored = localStorage.getItem(CACHE_KEY);
-                if (stored) {
-                    try {
-                        this.prompts = JSON.parse(stored);
-                        console.log('Prompts loaded from localStorage');
-                        return;
-                    } catch (e) {
-                        console.error('Failed to parse (or invalid) stored prompts, clearing...', e);
-                        localStorage.removeItem(CACHE_KEY);
+                // 1. Fetch user customizations from Backend
+                try {
+                    const settingsRes = await fetch('/api/data/settings/global');
+                    if (settingsRes.ok) {
+                        const settings = await settingsRes.json();
+                        if (settings) {
+                            this.customSystemPrompt = settings.systemPrompt || null;
+                            this.customFillingPrompt = settings.fillingPrompt || null;
+                            if (settings.prompts) {
+                                this.prompts = settings.prompts;
+                                console.log('Prompts loaded from backend settings');
+                            }
+                        }
                     }
+                } catch (apiErr) {
+                    console.warn('Failed to fetch custom prompts from backend, proceeding with defaults', apiErr);
                 }
 
-                // 2. Fetch from public/prompts.json if strictly needed (first run or reset)
-                // Note: In production, you might want to always fetch to check for updates,
-                // but for now we prioritize user local storage if it exists.
-                console.log('Fetching default prompts from /prompts.json...');
-                // Use BASE_URL to handle subpath deployment (/adminportal/)
-                const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
-                const response = await fetch(`${baseUrl}prompts.json`);
-                if (!response.ok) throw new Error('Failed to fetch default prompts');
-
-                const defaults = await response.json();
-                this.prompts = defaults;
-
-                // Do not auto-save defaults to localStorage anymore.
-                // Only user customizations should be saved.
+                // 2. Fetch from public/prompts.json if not in settings
+                if (!this.prompts) {
+                    console.log('Fetching default prompts from /prompts.json...');
+                    const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+                    const response = await fetch(`${baseUrl}prompts.json`);
+                    if (!response.ok) throw new Error('Failed to fetch default prompts');
+                    this.prompts = await response.json();
+                }
 
             } catch (error) {
                 console.error('CRITICAL: Failed to initialize prompts!', error);
@@ -69,13 +70,9 @@ class PromptService {
     /**
      * Get the active system prompt (Custom or Default)
      */
-    /**
-     * Get the active "AI Filling Content Prompt"
-     */
     getContentFillingPrompt() {
-        // Try custom first (User defined)
-        const custom = localStorage.getItem('quickstor_content_filling_prompt');
-        if (custom) return custom;
+        // Try custom first (User defined in memory)
+        if (this.customFillingPrompt) return this.customFillingPrompt;
 
         // Fallback: Default Agent Persona
         return `You are an expert Content Architect and Web Copywriter Agent.
@@ -88,13 +85,9 @@ When a user provides a file or image, analyze it deeply to extract relevant them
     /**
      * Get the general system prompt (Legacy / General)
      */
-    /**
-     * Get the general system prompt (Legacy / General)
-     */
     getSystemPrompt() {
         // Try custom first
-        const custom = localStorage.getItem('quickstor_system_prompt_custom');
-        if (custom) return custom;
+        if (this.customSystemPrompt) return this.customSystemPrompt;
 
         // Fallback to default in prompts.json
         return this.get('system.default') || "You are a professional UX copywriter and web designer.";
@@ -143,14 +136,21 @@ Return ONLY the complete updated JSON object. Do not include any explanation or 
      * Reload prompts from source (Reset to defaults)
      */
     async resetToDefaults() {
-        localStorage.removeItem(CACHE_KEY);
-        localStorage.removeItem('quickstor_system_prompt_custom');
-        // Clean up legacy key if present
-        localStorage.removeItem('quickstor_system_prompt');
         this.prompts = null;
+        this.customSystemPrompt = null;
+        this.customFillingPrompt = null;
         this.initializationPromise = null;
         await this.init();
         return this.prompts;
+    }
+
+    // Setters for memory cache updates from Settings
+    setCustomSystemPrompt(prompt) {
+        this.customSystemPrompt = prompt;
+    }
+
+    setCustomFillingPrompt(prompt) {
+        this.customFillingPrompt = prompt;
     }
 }
 

@@ -47,7 +47,6 @@ const SectionLibrary = () => {
     if (confirm('Are you sure you want to delete this section?')) {
       const updated = customSections.filter(s => s.id !== sectionId);
       setCustomSections(updated);
-      localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
     }
   };
 
@@ -74,7 +73,6 @@ const SectionLibrary = () => {
 
     const updated = [...customSections, clonedSection];
     setCustomSections(updated);
-    localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
 
     setCloneModalOpen(false);
     setSectionToClone(null);

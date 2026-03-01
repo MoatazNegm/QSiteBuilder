@@ -292,7 +292,6 @@ const SectionCreator = () => {
       }
 
       setCustomSections(updated);
-      localStorage.setItem('quickstor_custom_sections', JSON.stringify(updated));
 
       setIsPublishing(false);
       setShowPublishModal(false);

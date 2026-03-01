@@ -35,6 +35,8 @@ export const SectionRenderer = ({ sections }) => {
           <RenderSectionWrapper
             key={section.id}
             styles={section.content?.styles}
+            width={section.content?.styles?.width}
+            height={section.content?.styles?.height}
           >
             <Component {...section.content} />
           </RenderSectionWrapper>

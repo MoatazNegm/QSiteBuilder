@@ -15,7 +15,11 @@ async function buildAll() {
     // 2. Build Admin Portal -> /adminportal
     console.log('\n🏗️  Building Admin Portal...');
     try {
-        execSync('cd quickstor-admin && npm run build -- --base=/adminportal/', { stdio: 'inherit' });
+        const vitePath = path.join(rootDir, 'quickstor-admin', 'node_modules', 'vite', 'bin', 'vite.js');
+        execSync(`node "${vitePath}" build --base=/adminportal/`, {
+            stdio: 'inherit',
+            cwd: path.join(rootDir, 'quickstor-admin')
+        });
         const adminDist = path.join(rootDir, 'quickstor-admin', 'dist');
         const adminDest = path.join(backendPublicDir, 'adminportal');
         fs.copySync(adminDist, adminDest);
@@ -28,14 +32,12 @@ async function buildAll() {
     // 3. Build Staging Site -> /staging
     console.log('\n🏗️  Building Staging Site (VITE_SITE_DOC_ID=quickstor-staging)...');
     try {
-        // Set env vars for staging build
-        // Windows needs 'set' but cross-platform logic is better handled by just passing env
-        // We use cross-env style execution relative to platform
-        const cmd = process.platform === 'win32'
-            ? 'cd quickstor-frontend && set "VITE_SITE_DOC_ID=quickstor-staging" && npm run build -- --base=/staging/'
-            : 'cd quickstor-frontend && VITE_SITE_DOC_ID=quickstor-staging npm run build -- --base=/staging/';
-
-        execSync(cmd, { stdio: 'inherit' });
+        const vitePath = path.join(rootDir, 'quickstor-frontend', 'node_modules', 'vite', 'bin', 'vite.js');
+        execSync(`node "${vitePath}" build --base=/staging/`, {
+            stdio: 'inherit',
+            cwd: path.join(rootDir, 'quickstor-frontend'),
+            env: { ...process.env, VITE_SITE_DOC_ID: 'quickstor-staging' }
+        });
 
         const frontendDist = path.join(rootDir, 'quickstor-frontend', 'dist');
         const stagingDest = path.join(backendPublicDir, 'staging');
@@ -49,16 +51,16 @@ async function buildAll() {
     // 4. Build Live Site -> / (Root)
     console.log('\n🏗️  Building Live Site (VITE_SITE_DOC_ID=quickstor-live)...');
     try {
-        const cmd = process.platform === 'win32'
-            ? 'cd quickstor-frontend && set "VITE_SITE_DOC_ID=quickstor-live" && npm run build' // no base needed for root
-            : 'cd quickstor-frontend && VITE_SITE_DOC_ID=quickstor-live npm run build';
-
-        execSync(cmd, { stdio: 'inherit' });
+        const vitePath = path.join(rootDir, 'quickstor-frontend', 'node_modules', 'vite', 'bin', 'vite.js');
+        execSync(`node "${vitePath}" build`, {
+            stdio: 'inherit',
+            cwd: path.join(rootDir, 'quickstor-frontend'),
+            env: { ...process.env, VITE_SITE_DOC_ID: 'quickstor-live' }
+        });
 
         const frontendDist = path.join(rootDir, 'quickstor-frontend', 'dist');
         const liveDest = path.join(backendPublicDir, 'live');
         fs.copySync(frontendDist, liveDest);
-        console.log('✅ Live Site built and moved to backend/public/live');
         console.log('✅ Live Site built and moved to backend/public/live');
     } catch (e) {
         console.error('❌ Live Build Failed:', e);

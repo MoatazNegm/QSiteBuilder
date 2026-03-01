@@ -53,8 +53,23 @@ const AICreatorModal = ({ isOpen, onClose, onSave }) => {
 
         try {
             const html = await AIService.generateElement(prompt, mode === 'code' ? code : null);
-            // Clean up Markdown if present (handled in service now, but double check)
-            const cleanHtml = html.replace(/```html/g, '').replace(/```/g, '').trim();
+            // Clean up Markdown if present
+            let cleanHtml = html.replace(/```html/g, '').replace(/```/g, '').trim();
+
+            // Sanitize classes: Remove any positioning or z-index classes that conflict with wrapper
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(cleanHtml, 'text/html');
+                const rootEl = doc.body.firstElementChild;
+                if (rootEl) {
+                    rootEl.classList.remove('absolute', 'fixed', 'relative', 'static', 'sticky');
+                    rootEl.className = rootEl.className.replace(/\bz-\[?-?\d+\]?\b/g, '').replace(/\s+/g, ' ').trim();
+                    cleanHtml = rootEl.outerHTML;
+                }
+            } catch (e) {
+                console.error("Failed to sanitize AI HTML classes", e);
+            }
+
             setGeneratedHtml(cleanHtml);
 
             // Auto-generate a name if empty

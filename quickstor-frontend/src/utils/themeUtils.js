@@ -68,3 +68,39 @@ export const applyThemeToDocument = (theme, rootElement = null) => {
 
     console.log('Theme applied:', theme.name);
 };
+
+/**
+ * Get CSS custom properties for a given theme
+ * @param {object} theme - Theme configuration object
+ * @returns {object} React style object containing CSS custom properties
+ */
+export const getThemeVariables = (theme) => {
+    if (!theme || !theme.colors) return {};
+
+    const vars = {
+        '--color-primary': theme.colors.primary,
+        '--color-secondary': theme.colors.secondary,
+        '--color-background': theme.colors.background,
+        '--color-surface': theme.colors.surface,
+        '--color-surface-alt': theme.colors.surfaceAlt,
+        '--color-text': theme.colors.text,
+        '--color-text-muted': theme.colors.textMuted,
+        '--color-border': theme.colors.border,
+        '--color-success': theme.colors.success,
+        '--color-warning': theme.colors.warning,
+        '--color-error': theme.colors.error,
+    };
+
+    if (theme.fonts) {
+        vars['--font-heading'] = theme.fonts.heading;
+        vars['--font-body'] = theme.fonts.body;
+    }
+
+    if (theme.hero) {
+        vars['--hero-bg'] = theme.hero.backgroundValue;
+        vars['--hero-glow-color'] = theme.hero.glowColor;
+        vars['--hero-glow-opacity'] = theme.hero.glowOpacity;
+    }
+
+    return vars;
+};

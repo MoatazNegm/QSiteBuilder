@@ -8,14 +8,53 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import multer from 'multer';
+import nodemailer from 'nodemailer';
 
 const app = express();
-const PORT = 3000;
+const PORT = 5173;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// --- SMTP RELAY ENDPOINT ---
+app.post('/api/v1/relay/dispatch', async (req, res) => {
+    try {
+        const { Host, Port, Username, Password, To, From, Subject, Body } = req.body;
+
+        console.log(`[Relay] Dispatching email to ${To} via ${Host}:${Port || 465}`);
+
+        if (!Host || !Username || !Password || !To || !From || !Subject || !Body) {
+            return res.status(400).json({ error: 'Missing required SMTP parameters' });
+        }
+
+        const transporter = nodemailer.createTransport({
+            host: Host,
+            port: Port || 465,
+            secure: (Port === 465),
+            auth: {
+                user: Username,
+                pass: Password
+            }
+        });
+
+        await transporter.sendMail({
+            from: From,
+            to: To,
+            subject: Subject,
+            text: Body,
+            html: Body
+        });
+
+        console.log(`[Relay] 250 OK: Message accepted for delivery.`);
+        res.json({ status: 202, message: "Accepted" });
+
+    } catch (error) {
+        console.error('[Relay] FATAL:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // --- STATIC FILES SERVING (Render Deployment) ---
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -290,6 +329,11 @@ try {
     await fs.writeFile(DATA_FILE, '{}');
     console.log('Created new data.json file');
 }
+
+// Final catch-all for Live Site (Must be LAST)
+app.get('/*', (req, res) => {
+    res.sendFile(path.join(PUBLIC_DIR, 'live', 'index.html'));
+});
 
 app.listen(PORT, () => {
     console.log(`QuickStor Backend running at http://localhost:${PORT}`);
